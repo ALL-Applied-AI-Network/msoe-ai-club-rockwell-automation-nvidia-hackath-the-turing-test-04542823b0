@@ -1,0 +1,45 @@
+# Virtual environment
+.venv/
+env/
+venv/
+ENV/
+
+# Environment variables & secrets
+.env
+.env.*
+!.env.example
+
+# Data and output directories
+data/
+outputs/
+
+# Large media files and archives
+*.mp4
+*.zip
+*.tar
+*.tar.gz
+*.7z
+
+# Machine learning model files and checkpoints
+models/
+*.pt
+*.pth
+*.onnx
+*.bin
+*.safetensors
+*.h5
+*.hdf5
+*.pkl
+*.joblib
+*.engine
+*.weights
+*.ckpt
+*.tflite
+*.pb
+
+# Python bytecode and cache
+__pycache__/
+*.py[cod]
+*$py.class
+.pytest_cache/
+.ipynb_checkpoints/
