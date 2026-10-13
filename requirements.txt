@@ -1,0 +1,10 @@
+# Python packages for the laptop environment.
+# Install with: pip install -r requirements.txt  (inside the activated .venv)
+opencv-python      # read images and videos
+numpy              # number crunching
+pandas             # tables and CSV files
+matplotlib         # charts
+scikit-learn       # simple machine-learning tools
+colour-science     # CIELAB colors and Delta-E color differences
+python-dotenv      # load settings and keys from .env
+openai             # client library for Cosmos's OpenAI-compatible API (scripts/ask_cosmos.py)

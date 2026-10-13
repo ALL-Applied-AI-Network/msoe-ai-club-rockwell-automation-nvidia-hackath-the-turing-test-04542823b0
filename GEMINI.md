@@ -1,104 +1,163 @@
 # Rockwell × NVIDIA Innovation Lab: Fluid Mixing Project (Dataset 2)
 
-Welcome to the team project instructions! This file defines our project goals, system rules, and guidelines for AI assistants working in this repository.
+This file is the project memory for every AI coding agent on this team. **Gemini** reads it automatically (Gemini CLI loads `GEMINI.md`). **Claude Code** reads `CLAUDE.md`, which imports this file, so both agents follow the same rules. Edit this file, not a copy.
+
+The full team plan and the beginner playbook are imported at the bottom of this file (see "Full reference"). If your tool does not load the imports, open those files yourself before starting a task card.
 
 ---
 
-## 1. Project Overview
+## 1. Project in one paragraph
 
-- **Event:** Rockwell Automation × NVIDIA Innovation Lab (Fall 2026)
-- **Track & Dataset:** **Dataset 2 — Fluid Mixing Station 3**
-- **Hardware / Context:** Synchronized industrial camera feeds monitoring fluid filling and mixing stations in a physical manufacturing line.
+We are building **Carryover Copilot** for Dataset 2, Fluid Mixing Station 3, at UWM's Connected Systems Institute (CSI). Three tanks (T-100 clear, T-200 orange, T-400 blue; T-300 is out of service) dispense through **one shared pipe and nozzle** in a fixed order (T-200 → T-400 → T-100). Whatever the last recipe left in that pipe tints the next vial. Example: Recipe 6 was orange, Recipe 7 is blue, and vial 7 (the first Recipe 7 vial) came out **green**. The plant's Teledyne check only knows "known color vs unknown", so it can't tell whether a vial matches *its* recipe, can't say why, and gives no warning. Our system:
 
----
+1. **Predicts risky recipe changes before the fill** (flush advisor: green / amber / red light, and whether a clear flush or a reordered queue fixes it).
+2. **Checks each filled vial's color against its recipe** from the `vial_fill` camera.
+3. **Explains the cause in plain words** for the operator, using NVIDIA Cosmos Reason.
 
-## 2. Project Goals
-
-Our mission is to build a reliable Physical AI solution for automated fluid mixing inspection:
-
-1. **Predict Risky Recipe Changes:**
-   Identify when transitioning from one fluid recipe to another presents high contamination risk (e.g., fluid carryover from dark or viscous fluids left in the dispensing lines).
-2. **Check Each Vial's Color Against Its Recipe:**
-   Analyze camera captures of mixed vials to measure the actual liquid color and verify whether it matches the expected target recipe within acceptable tolerances.
-3. **Explain the Root Cause:**
-   Instead of just providing a pass/fail flag, clearly explain *why* an error occurred (e.g., "Expected light yellow, but detected greenish tint due to carryover from the previous blue batch").
+Deadlines: team plan Wed Oct 14, 11:59 PM CT · final submission Sun Nov 1, 11:59 PM CT (≈5-min video, one-page summary, repo link, references) · finals Thu Nov 5 at MSOE.
 
 ---
 
-## 3. Core Rules (Non-Negotiable)
+## 2. How the system works (the "inference cascade")
 
-When writing code, designing experiments, or modifying this repository, follow these four rules strictly:
+Cheap math first, AI only when needed. Every vial goes through the cheapest step that can decide it.
 
-### Rule 1: Real Images Are for Testing ONLY, Never Training
-- **Real physical camera images must only be used as test/evaluation data**, never for model training or fitting parameters.
-- Use synthetic data, digital twins, mathematical color models (e.g., Kubelka-Munk theory, CIE Delta-E), or physics simulations for model development. This ensures our models generalize and test results remain honest and unbiased.
+| Step | What runs | When |
+| :--- | :--- | :--- |
+| 0. Baseline (the number to beat) | Crop the vial, average color in CIELAB, compare to the recipe's clean reference vial with ΔE2000 | Built in Card 3 |
+| 1. Before the fill | Flush advisor formula (dye amounts + residue volume `V_r` + calibrated color map `g`) | Every recipe change |
+| 2. After the fill | Plain color + fill-level measurement of the vial crop | Every vial |
+| 3. Unsure zone | Small vial model trained **only on Isaac Sim images** | Borderline vials only |
+| 4. Flagged vial | **Cosmos Reason** explanation | Flagged vials only; cached per "previous → next" recipe pair |
 
-### Rule 2: Never Commit Data, Large Files, or API Keys
-- Never commit datasets, video files (`.mp4`), zip archives (`.zip`), or model weights to GitHub.
-- Never commit `.env` files or API secrets. Always use environment variables or local `.env` files (which are ignored by `.gitignore`).
+The flush model works in **dye amounts (orange share, blue share), not colors**, because dyes don't mix linearly in appearance: pale recipes are far more sensitive, and orange into blue changes the hue itself (green/brown). Starting cut points: predicted ΔE below ~2 proceed, ~2–5 flag, above ~5 flush or reorder.
 
-### Rule 3: Keep Scripts Small, One Job Each, in `scripts/`
-- Every script must reside in the `scripts/` directory.
-- Each script must do **exactly one job** (modular, easy to understand, and testable).
-- Examples of single-purpose scripts:
-  - `scripts/extract_color.py` (extracts color values from a vial region)
-  - `scripts/compare_recipe.py` (compares observed color against the target recipe)
-  - `scripts/predict_carryover_risk.py` (calculates carryover risk between two consecutive recipes)
-- Avoid large "monolith" files that do everything in a single script.
-
-### Rule 4: Explain Everything Simply (No Coding Experience)
-- The team has no coding background.
-- Whenever an AI assistant explains a step, code change, or workflow, it must:
-  - Use simple, plain English without unnecessary technical jargon.
-  - Explain *why* a step is necessary and *what* it does in everyday terms.
-  - Provide the exact, copy-paste terminal command to run.
-  - Clearly state what output the user should expect to see.
+A **tank-color reader** on the `tank_level` camera (Card 5b) identifies which dye is in each tank, because the control system only knows tank numbers and tanks can be refilled with a different color.
 
 ---
 
-## 4. Repository Structure
+## 3. What we use Isaac Sim for
+
+Isaac Sim is our **training-data factory**. The rules say: train on twin data, test on real data.
+
+- **The twin:** the organizers' USD model of the fill station and cap/seal station, with virtual cameras placed like the real `vial_fill` and `cap_seal` cameras, plus a render script. Tanks are **not** modeled; liquid color is **only approximate**.
+- **Where it runs:** headless (no screen) on a rented **Brev** GPU (RTX PRO 6000, L40S fallback), instance name `fluid-isaac`. Agents drive it with Python scripts; results are copied back with `brev copy`. Always **stop** the instance after a session.
+- **Card 6:** `scripts/render_test.py` renders 10 images from the twin's `vial_fill` camera; compare angle and vial position with a real frame.
+- **Card 7:** `scripts/set_liquid.py` makes the vial's liquid color (from orange share, blue share) and fill height (10–80 mL) controllable; `scripts/calibrate_colors.py` matches the 10 recipes' rendered colors to the real clean 3rd vials (**every recipe within ΔE 3**); `scripts/generate_dataset.py` uses **Replicator** to render 2,000+ images randomizing dye shares (including contaminated mixes), fill level, lighting, glare and 1–2 px camera jitter, saved in batches of 200 with a `labels.csv` (orange share, blue share, fill mL, predicted Lab).
+- **Card 8:** `scripts/train_vial_model.py` trains a small model (ResNet-18 or a color regressor) on the synthetic images to predict orange share, blue share and fill level. It is then tested **only** on the 30 real labeled vials, compared with the baseline: (a) baseline, (b) synthetic-trained, (c) synthetic-trained + real vials as reference examples.
+- Not used: Cosmos video generation (too expensive; Isaac Sim covers synthetic data).
+
+---
+
+## 4. What we use Cosmos for
+
+**Cosmos 3 Nano Reasoner** (model name `nvidia/cosmos3-nano-reasoner`) is our explanation engine and our clearest "Physical AI model" for the judges.
+
+- **What it does:** looks at images (or a short video) plus text and answers in text. It **never decides pass/fail**; the color math and vial model do that. It only explains flagged vials, and its answers are cached per recipe change (e.g. `"6->7"`) in `outputs/explanations_cache.json` and logged in `outputs/cosmos_log.csv`. If Cosmos fails, the dashboard shows "explanation unavailable" and still shows the decision.
+- **What we send it (Card 9):** the flagged vial crop, a clean reference image of its intended recipe, the previous recipe, the dispense order, and the flush advisor's prediction. We ask for JSON with keys `matches_recipe`, `observed_color`, `likely_cause`, `operator_action`, `confidence`.
+- **A/B/C experiment:** A = vial image only; B = + reference image + recipe info; C = B + our ΔE and flush prediction. Score how often each says the right match/no-match and names the right cause.
+- **Also used by:** the tank reader (Card 5b), only when the color math is "unsure".
+- **How our code reaches it:** build.nvidia.com offers a browser **playground** (Experience tab) and a **self-host container (NIM)**, not a documented hosted API for Cosmos 3. So we run the NIM container `nvcr.io/nim/nvidia/cosmos3-reasoner` on a Brev **L40S** (needs ~17 GB GPU memory), instance `fluid-cosmos`, and forward port 8000 to the laptop (`brev port-forward fluid-cosmos --port 8000:8000`). Full commands: RUNBOOK.md, "Cosmos: start the server".
+- **The template script:** `scripts/ask_cosmos.py` (tested request format from NVIDIA's Cosmos 3 Reasoner cookbook). It uses the OpenAI-compatible chat API at `COSMOS_BASE_URL` (default `http://127.0.0.1:8000/v1`), sends local files as base64 data URIs, puts **media before text**, and uses NVIDIA's recommended sampling settings. `--think` appends NVIDIA's reasoning format (`<think> ... </think>` then the answer) and the script splits the two. Build `scripts/explain.py` on top of it; don't invent a different request format or endpoint.
+
+---
+
+## 5. Core rules (non-negotiable)
+
+### Rule 1: Real images are for testing only, never training
+- Real camera images are test/evaluation data only. They may also be used for color calibration targets and few-shot examples in Cosmos prompts, with evaluation kept **leave-one-recipe-out**.
+- Train on synthetic data (Isaac Sim twin), color math (CIELAB, ΔE2000, mixing models) or physics simulation.
+- Never use random train/test splits: neighboring frames are near-duplicates. Split by recipe or by run.
+
+### Rule 2: Never commit data, large files, or API keys
+- Never commit datasets, videos (`.mp4`), archives (`.zip`), synthetic images, or model weights.
+- Never commit `.env` files or keys. Keys live in a local `.env` (copy `.env.example`), which Git ignores.
+
+### Rule 3: Keep scripts small, one job each, in `scripts/`
+- Every script lives in `scripts/` and does **exactly one job** (e.g. `crop_vial.py`, `flush_advisor.py`, `ask_cosmos.py`).
+- Each script starts with a docstring saying what it does, what it reads and what it writes.
+- Inputs come from `data/` (or `outputs/`); results go to `outputs/`.
+
+### Rule 4: Explain everything simply (the team has no coding experience)
+- Plain English, no unexplained jargon. Say *why* a step is needed and *what* it does.
+- Always give the exact copy-paste command, and say what output the user should expect.
+
+### Rule 5: Respect the real station
+- Observe only. Never change recipes, move or re-aim cameras, or touch tanks; act only with the plant manager's approval.
+- Station limits: ≤ 80 mL per vial, ≥ 10 mL of any component used, ≤ 50 mL from T-200, never T-300.
+- Never invent business numbers (scrap cost, flush cost); use only numbers CSI or mentors give us.
+
+---
+
+## 6. Coding agents: Gemini and Claude only
+
+We use **two** agents. We do **not** use Codex, GPT-6 Astra, or any other agent.
+
+- **Gemini** (default, free): everyday building, data exploration, baseline, flush model, dashboard, docs.
+- **Claude Code** (Claude Pro/Max plan): hard problems (headless Isaac Sim, debugging loops), plans for cards 7, 8 and 10 (`PLAN.md`), and reviews of anything that produces a number for judges (`REVIEW.md`).
+- Handoffs go through files (`HANDOFF.md`, `PLAN.md`, `REVIEW.md`), never through memory of a chat. Commit before every switch. Only one agent works on a task at a time.
+- If the same error survives three attempts, stop: commit, write `HANDOFF.md`, and switch agents or start a fresh session.
+
+---
+
+## 7. Where things stand (update after every card)
+
+- **Done:** Card 1 (data inventory in RUNBOOK.md; `scripts/show_examples.py` contact sheet) and Card 2 (`scripts/align_cameras.py` nearest frame per camera for all 30 labeled vials; `scripts/plot_time_gaps.py` histogram and >2 s check for all three cameras). Cosmos template `scripts/ask_cosmos.py` added.
+- **Next:** Card 3, baseline color check (`scripts/crop_vial.py`, average CIELAB, ΔE2000 to the recipe's clean 3rd vial, leave-one-recipe-out).
+- **The story so far, in plain English with the reasons:** `docs/PROGRESS.md`. After finishing any card, add a section there (what we did, what we found, why we did it that way) and update this list.
+
+---
+
+## 8. Repository layout
 
 ```text
-├── .gitignore          # Keeps large files, virtual environment, and secrets out of Git
-├── .venv/              # Local Python virtual environment (ignored by Git)
-├── GEMINI.md           # This project guide and AI instructions
-├── README.md           # Competition guidelines and project overview
-├── data/               # Local folder for dataset files (ignored by Git, never committed)
-├── outputs/            # Local folder for generated plots, metrics, results (ignored by Git)
-└── scripts/            # Small, single-purpose Python scripts (each does one job)
+├── GEMINI.md            # This file: project memory for Gemini (and Claude, via CLAUDE.md)
+├── CLAUDE.md            # Claude Code's memory file; imports GEMINI.md
+├── README.md            # Organizers' event info + our project summary
+├── RUNBOOK.md           # Dataset inventory and every command that works
+├── requirements.txt     # Python packages for the laptop environment
+├── .env.example         # Template for .env (copy it; never commit .env)
+├── docs/
+│   ├── team-plan.md         # Copy of the team plan (Team plan tab of our doc)
+│   ├── beginner-playbook.md # Copy of the beginner playbook (task cards + prompts)
+│   └── PROGRESS.md          # Plain-English progress log with the reasoning
+├── scripts/             # Small, single-purpose Python scripts
+├── data/                # Dataset (local only, ignored by Git)
+└── outputs/             # Generated charts, tables, logs (local only, ignored by Git)
 ```
 
 ---
 
-## 5. Development Environment & Quick Commands
+## 9. Environment and commands
 
-The project uses a Python 3.12 virtual environment located in `.venv/`.
+Python 3.12 virtual environment in `.venv/`, packages from `requirements.txt`.
 
-### Activating the Environment (Windows)
-- **PowerShell:**
+- **Create it (once):** `python -m venv .venv` then, after activating, `pip install -r requirements.txt`
+- **Activate (Windows PowerShell):**
   ```powershell
+  Set-ExecutionPolicy -Scope Process -ExecutionPolicy RemoteSigned
   .\.venv\Scripts\Activate.ps1
   ```
-- **Command Prompt:**
-  ```cmd
-  .venv\Scripts\activate.bat
-  ```
+- **Activate (Command Prompt):** `.venv\Scripts\activate.bat`
+- **Activate (Mac):** `source .venv/bin/activate`
 
-### Installed Libraries
-- `opencv-python`: Image and video processing
-- `numpy`: Number and matrix calculations
-- `pandas`: Data tables and recipe spreadsheets
-- `matplotlib`: Generating charts and visualizations
-- `scikit-learn`: Machine learning utilities
-- `colour-science`: Color science models, conversions, and Delta-E color differences
-- `python-dotenv`: Loading configuration from `.env` files
+Main packages: `opencv-python` (images/video), `numpy`, `pandas` (tables), `matplotlib` (charts), `scikit-learn`, `colour-science` (CIELAB, ΔE2000), `python-dotenv` (.env), `openai` (the client library Cosmos's API speaks).
 
 ---
 
-## 6. Guidelines for AI Assistants
+## 10. Guidelines for AI assistants
 
-When interacting with this repository and helping the team:
-- Always reference the files using relative or clickable paths (e.g., `scripts/my_script.py`).
-- Always verify your code by running it before presenting results to the user.
-- If a command fails or produces unexpected output, explain the issue clearly and fix it automatically.
-- Keep all explanations beginner-friendly, encouraging, and actionable.
+- Before starting, check which task card the user is on (docs/beginner-playbook.md) and what is done (section 7 and docs/PROGRESS.md).
+- Reference files by relative path (e.g. `scripts/align_cameras.py`).
+- Run your code before presenting results. If something fails, explain it simply and fix it.
+- Never accept or present a number you can't explain; say what could make it wrong.
+- After a step works: add its command to RUNBOOK.md, add a plain-English entry to docs/PROGRESS.md, then commit with a clear message.
+- Keep explanations beginner-friendly, encouraging and actionable.
+
+---
+
+## Full reference (imported)
+
+@./docs/team-plan.md
+@./docs/beginner-playbook.md
+@./docs/PROGRESS.md

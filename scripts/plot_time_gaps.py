@@ -1,9 +1,10 @@
 """
 scripts/plot_time_gaps.py
 Plots a histogram of the time gaps between each vial's fill end time and the
-nearest captured camera frame from outputs/aligned_camera_frames.csv.
-Checks whether any vial exceeds the 2.0-second threshold and saves the chart
-to outputs/time_gaps_histogram.png.
+nearest captured frame from each of the 3 cameras (cap_seal, tank_level,
+vial_fill), read from outputs/aligned_camera_frames.csv.
+Lists any vial where a camera has no frame within 2.0 seconds and saves the
+chart to outputs/time_gaps_histogram.png.
 """
 
 from pathlib import Path
@@ -24,40 +25,62 @@ def plot_histogram():
 
     df = pd.read_csv(csv_path)
 
-    # Collect time gaps from the alignment table
-    # Since cameras were synchronized, the gaps across cameras are identical per vial
-    gaps = df["vial_fill_time_gap_s"]
-    abs_gaps = gaps.abs()
+    # Each camera saves its own frames on its own schedule, so the gap to the
+    # nearest frame is different for each camera. Check all three, not just one.
+    cameras = ["cap_seal", "tank_level", "vial_fill"]
+    camera_colors = {
+        "cap_seal": "#7c3aed",
+        "tank_level": "#d97706",
+        "vial_fill": "#2b5c8f",
+    }
+    gaps = {cam: df[f"{cam}_time_gap_s"] for cam in cameras}
+    abs_gaps = {cam: gaps[cam].abs() for cam in cameras}
 
-    # Check for any vial with a time gap greater than 2.0 seconds
+    # Check for any vial where at least one camera has no frame within 2.0 seconds
     threshold = 2.0
-    vials_exceeding_threshold = df[abs_gaps > threshold]
 
     print("=" * 60)
     print("TIME GAP ANALYSIS REPORT (Threshold = 2.0 seconds)")
     print("=" * 60)
     print(f"Total vials inspected: {len(df)}")
-    print(f"Min signed gap:        {gaps.min():+.3f} s")
-    print(f"Max signed gap:        {gaps.max():+.3f} s")
-    print(f"Mean signed gap:       {gaps.mean():+.3f} s")
-    print(f"Max absolute gap:      {abs_gaps.max():.3f} s")
-    print(f"Mean absolute gap:     {abs_gaps.mean():.3f} s")
+    for cam in cameras:
+        print("-" * 60)
+        print(f"Camera: {cam}")
+        print(f"  Min signed gap:      {gaps[cam].min():+.3f} s")
+        print(f"  Max signed gap:      {gaps[cam].max():+.3f} s")
+        print(f"  Mean signed gap:     {gaps[cam].mean():+.3f} s")
+        print(f"  Max absolute gap:    {abs_gaps[cam].max():.3f} s")
+        print(f"  Mean absolute gap:   {abs_gaps[cam].mean():.3f} s")
     print("-" * 60)
 
-    if len(vials_exceeding_threshold) == 0:
+    problem_rows = []
+    for _, row in df.iterrows():
+        late_cams = [
+            cam for cam in cameras if abs(row[f"{cam}_time_gap_s"]) > threshold
+        ]
+        if late_cams:
+            problem_rows.append((row, late_cams))
+
+    if not problem_rows:
         print(
-            "RESULT: 0 vials exceeded the 2.0s threshold! All 30 vials have"
+            f"RESULT: Every camera has a frame within {threshold}s of every vial's fill end."
         )
-        print("        a camera frame within 1.0 second of fill completion.")
     else:
         print(
-            f"RESULT: Found {len(vials_exceeding_threshold)} vial(s) with gap > 2.0s:"
+            f"RESULT: {len(problem_rows)} vial(s) have a camera with no frame within {threshold}s:"
         )
-        for _, row in vials_exceeding_threshold.iterrows():
+        for row, late_cams in problem_rows:
+            details = ", ".join(
+                f"{cam} {row[f'{cam}_time_gap_s']:+.3f} s" for cam in late_cams
+            )
             print(
-                f"  - Vial {int(row['vial'])} (Recipe {int(row['recipe_id'])}): {row['vial_fill_time_gap_s']:+.3f} s"
+                f"  - Vial {int(row['vial'])} (Recipe {int(row['recipe_id'])}): {details}"
             )
     print("=" * 60)
+
+    # Bin edges cover the largest gap seen, so no vial falls off the chart
+    largest_gap = max(threshold, max(abs_gaps[cam].max() for cam in cameras))
+    axis_limit = np.ceil(largest_gap * 2) / 2 + 0.5
 
     # Create figure with 2 subplots:
     # 1. Signed time gap (shows before vs after pump stop)
@@ -65,16 +88,16 @@ def plot_histogram():
     fig, (ax1, ax2) = plt.subplots(1, 2, figsize=(14, 5.5))
     fig.patch.set_facecolor("#f8f9fa")
 
-    # Subplot 1: Signed Time Gap Histogram
-    bins_signed = np.linspace(-1.5, 1.5, 13)
+    # Subplot 1: Signed Time Gap Histogram, one color per camera
+    bins_signed = np.arange(-axis_limit, axis_limit + 0.25, 0.25)
     ax1.set_facecolor("#ffffff")
-    n1, bins1, patches1 = ax1.hist(
-        gaps,
+    ax1.hist(
+        [gaps[cam] for cam in cameras],
         bins=bins_signed,
-        color="#2b5c8f",
-        edgecolor="#1a365d",
+        color=[camera_colors[cam] for cam in cameras],
+        label=cameras,
         alpha=0.85,
-        rwidth=0.88,
+        rwidth=0.9,
     )
     ax1.axvline(
         0,
@@ -101,20 +124,20 @@ def plot_histogram():
         "Time Gap in Seconds (Negative = Before, Positive = After)", fontsize=10
     )
     ax1.set_ylabel("Number of Vials", fontsize=10)
-    ax1.set_xlim(-2.5, 2.5)
+    ax1.set_xlim(-axis_limit, axis_limit)
     ax1.grid(axis="y", linestyle="--", alpha=0.5)
     ax1.legend(loc="upper left", frameon=True, facecolor="#ffffff")
 
-    # Subplot 2: Absolute Time Gap Histogram
-    bins_abs = np.linspace(0, 2.0, 9)
+    # Subplot 2: Absolute Time Gap Histogram, one color per camera
+    bins_abs = np.arange(0, axis_limit + 0.25, 0.25)
     ax2.set_facecolor("#ffffff")
-    n2, bins2, patches2 = ax2.hist(
-        abs_gaps,
+    ax2.hist(
+        [abs_gaps[cam] for cam in cameras],
         bins=bins_abs,
-        color="#d97706",
-        edgecolor="#92400e",
+        color=[camera_colors[cam] for cam in cameras],
+        label=cameras,
         alpha=0.85,
-        rwidth=0.88,
+        rwidth=0.9,
     )
     ax2.axvline(
         threshold,
@@ -123,13 +146,6 @@ def plot_histogram():
         linewidth=2,
         label=f"{threshold}s Threshold Limit",
     )
-    ax2.axvline(
-        abs_gaps.max(),
-        color="#0d6efd",
-        linestyle="--",
-        linewidth=2,
-        label=f"Max Observed ({abs_gaps.max():.3f}s)",
-    )
     ax2.set_title(
         "Absolute Time Gap Magnitude", fontsize=12, fontweight="bold", pad=10
     )
@@ -137,12 +153,12 @@ def plot_histogram():
         "Absolute Time Difference |Δt| in Seconds", fontsize=10
     )
     ax2.set_ylabel("Number of Vials", fontsize=10)
-    ax2.set_xlim(0, 2.5)
+    ax2.set_xlim(0, axis_limit)
     ax2.grid(axis="y", linestyle="--", alpha=0.5)
     ax2.legend(loc="upper right", frameon=True, facecolor="#ffffff")
 
     plt.suptitle(
-        "Camera-to-Fill Synchronization Time Gaps (Video 5 — 30 Vials)",
+        f"Camera-to-Fill Synchronization Time Gaps (Video 5 — {len(df)} Vials)",
         fontsize=15,
         fontweight="bold",
         y=0.98,

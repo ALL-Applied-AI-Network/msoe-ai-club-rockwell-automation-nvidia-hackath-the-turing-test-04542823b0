@@ -1,3 +1,19 @@
+# Carryover Copilot · Fluid Mixing (Dataset 2)
+
+**Our project:** warn the operator before a risky recipe change, check every filled vial's color against its own recipe, and explain in plain words why a vial is off (e.g. "leftover orange from Recipe 6 turned this blue fill green"). Training data comes from the Isaac Sim digital twin; real camera images are used only for testing; NVIDIA Cosmos Reason writes the explanations.
+
+| Start here | What it is |
+|---|---|
+| [docs/PROGRESS.md](docs/PROGRESS.md) | What we've done so far and why, in plain English |
+| [docs/team-plan.md](docs/team-plan.md) | The team plan: approach, compute, schedule, roles |
+| [docs/beginner-playbook.md](docs/beginner-playbook.md) | Step-by-step task cards with prompts to copy |
+| [RUNBOOK.md](RUNBOOK.md) | Dataset inventory and every command that works |
+| [GEMINI.md](GEMINI.md) / [CLAUDE.md](CLAUDE.md) | Project memory for our two coding agents (Gemini and Claude Code) |
+
+**Setup:** `python -m venv .venv`, activate it (see RUNBOOK.md), then `pip install -r requirements.txt`. Put the dataset in `data/` (Git ignores it) and copy `.env.example` to `.env` for keys.
+
+---
+
 # Rockwell Automation + NVIDIA Innovation Lab · Fall 2026
 
 This is your team's repository for the four-week physical AI hackathon run by Rockwell Automation, NVIDIA, the MSOE AI Club and UWM's Connected Systems Institute. Build everything here. Sponsors can follow your work as it progresses, and your final submission links straight to this repository.
