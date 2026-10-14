@@ -59,13 +59,14 @@ The plant's current camera check only asks "is this a color I know?" A green via
 **Fix made on Oct 13:** the histogram now checks all three cameras instead of assuming they match. On video 5 they did match exactly: all three cameras were triggered at the same moments, so their gaps are identical. The check stays as a safeguard in case a camera drops frames on another run.
 
 **Results recorded on our data (30 vials inspected):**
-- **Gap statistics for each camera:**
-  - `cap_seal`: min `-0.961 s`, max `+0.984 s`, mean `-0.000 s` (max absolute gap `0.984 s`, mean absolute gap `0.551 s`).
-  - `tank_level`: min `-0.961 s`, max `+0.984 s`, mean `-0.000 s` (max absolute gap `0.984 s`, mean absolute gap `0.551 s`).
-  - `vial_fill`: min `-0.961 s`, max `+0.984 s`, mean `-0.000 s` (max absolute gap `0.984 s`, mean absolute gap `0.551 s`).
-- **Clock offset check:** None of the cameras has gaps of all one sign. Gaps are evenly distributed on both sides of zero (`-0.961 s` to `+0.984 s`) with mean `-0.000 s`, so there is no systematic clock offset.
+- **Gap statistics for each camera across all 30 vials:**
+  - `cap_seal`, `tank_level`, `vial_fill`: min `-362.683 s`, max `+0.972 s`, mean `-41.718 s` (max absolute gap `362.683 s`, mean absolute gap `42.215 s`).
+- **Gap statistics for Vials 1–24 (captured in still images before capture stopped at 20:15:27):**
+  - All three cameras: min `-0.927 s`, max `+0.972 s`, mean `+0.089 s` (max absolute gap `0.972 s`, mean absolute gap `0.532 s`).
+- **Clock offset check:** For the captured vials (1–24), gaps are evenly distributed on both sides of zero (`-0.927 s` to `+0.972 s`) with mean `+0.089 s`, confirming no systematic clock offset between camera hardware clocks.
+- **2-second check:** Exactly 6 vials (25–30) have no frame within 2.0 s because still-image capture stopped at 20:15:27 (1697.1 real seconds into the dataset), while Vials 25–30 completed fills between 20:16:01 and 20:21:30. All 24 captured vials (1–24) passed within 0.972 s.
 - **Eye check:** the three file names for each vial carry the same timestamp. Opening vials 1, 7 and 20 in `outputs/aligned_check.png` confirmed the three cameras captured the exact same moment, but `cap_seal` shows earlier vials (or an empty rack for vial 1) because finished vials travel downstream to that station.
-- **Lesson for Card 3:** Card 3 measures each vial in the last parked frame from annotations/video5_vial_times_corrected.csv, not from the label times.
+- **Lesson for Card 3:** Card 3 measures each vial in the last parked frame directly from `vial_fill_video_5.mp4` using `annotations/video5_vial_times_corrected.csv`, giving us access to all 30 vials with consistent lighting and encoding.
 
 **An open question this raised:** at the moment a fill ends, the `cap_seal` camera is most likely looking at a *different* vial (the finished vial travels to the cap/seal station afterwards). So "same moment" is not the same as "same vial" for that camera. To follow one vial, we will need the travel delay between stations. Card 3 doesn't need it (it only uses `vial_fill`), but the dashboard and live demo will.
 

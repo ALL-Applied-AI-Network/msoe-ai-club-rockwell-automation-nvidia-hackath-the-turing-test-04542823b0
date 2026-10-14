@@ -102,7 +102,8 @@ We use **two** agents. We do **not** use Codex, GPT-6 Astra, or any other agent.
 
 ## 7. Where things stand (update after every card)
 
-- **Done:** Card 1 (data inventory in RUNBOOK.md; `scripts/show_examples.py` contact sheet) and Card 2 (`scripts/align_cameras.py` nearest frame per camera for all 30 labeled vials; `scripts/plot_time_gaps.py` histogram and >2 s check for all three cameras; `scripts/show_aligned_frames.py`; `scripts/last_frame_per_vial.py` 5x6 contact sheet and label check). Cosmos template `scripts/ask_cosmos.py` added.
+- **Done:** Card 1 (data inventory in RUNBOOK.md; `scripts/show_examples.py` contact sheet) and Card 2 (`scripts/align_cameras.py` aligned using `scripts/time_base.py`; `scripts/plot_time_gaps.py` histogram; `scripts/show_aligned_frames.py`; `scripts/find_physical_fills.py`; `scripts/fill_timeline_strip.py`; corrected annotations in `annotations/video5_vial_times_corrected.csv` and `annotations/video5_frame_labels_corrected.csv`). Cosmos template `scripts/ask_cosmos.py` added.
+- **Time base rule:** Label `start_s` and `end_s` in `video5_vial_recipes.csv` are in MP4 playback seconds (30.0 fps container rate). Still-image file timestamps are in real wall-clock time (camera recorded at ~24.676 fps). Always convert between them using `scripts/time_base.py` (`mp4_to_real()`, `real_to_mp4()`). Never use `data/.../video5_frame_labels.csv` for vial numbers; use `annotations/video5_vial_times_corrected.csv` or `annotations/video5_frame_labels_corrected.csv`.
 - **Next:** Card 3, baseline color check (`scripts/crop_vial.py`, average CIELAB, ΔE2000 to the recipe's clean 3rd vial, leave-one-recipe-out).
 - **The story so far, in plain English with the reasons:** `docs/PROGRESS.md`. After finishing any card, add a section there (what we did, what we found, why we did it that way) and update this list.
 

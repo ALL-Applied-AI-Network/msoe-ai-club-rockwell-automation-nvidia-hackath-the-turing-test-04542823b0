@@ -11,10 +11,15 @@ For each of the 30 labeled vials:
 5. Saves the aligned table to outputs/aligned_camera_frames.csv.
 """
 
+import sys
 from datetime import datetime
 from pathlib import Path
 import re
 import pandas as pd
+
+# Import time base conversion
+sys.path.insert(0, str(Path(__file__).resolve().parent))
+from time_base import mp4_to_real, MP4_T0_DATETIME
 
 # Regex pattern to extract YYYYMMDD_HHMMSS_microseconds from filenames
 TIMESTAMP_PATTERN = re.compile(r"(\d{8})_(\d{6})_(\d{6})")
@@ -68,18 +73,12 @@ def align_cameras():
 
     output_dir.mkdir(parents=True, exist_ok=True)
 
-    # 1. Load ground truth recipe labels and frame timing
+    # 1. Load ground truth recipe labels
     recipes_df = pd.read_csv(recipes_file)
-    frame_labels_df = pd.read_csv(frame_labels_file)
 
-    # Determine reference start time (t=0) for Video 5
-    # First frame timestamp minus its elapsed video seconds gives video t=0
-    first_frame_ts = pd.to_datetime(frame_labels_df.loc[0, "timestamp"])
-    first_frame_video_s = frame_labels_df.loc[0, "video_s"]
-    video_t0 = first_frame_ts - pd.to_timedelta(first_frame_video_s, unit="s")
-
+    video_t0 = MP4_T0_DATETIME
     print(
-        f"Video 5 start reference time (t=0): {video_t0.strftime('%Y-%m-%d %H:%M:%S.%f')}"
+        f"Video 5 MP4 start reference time (t=0): {video_t0.strftime('%Y-%m-%d %H:%M:%S.%f')[:-3]}"
     )
 
     # 2. Load all available camera frames by parsing timestamps from filenames
@@ -95,15 +94,17 @@ def align_cameras():
     for _, vial_row in recipes_df.iterrows():
         vial_num = int(vial_row["vial"])
         recipe_id = int(vial_row["recipe_id"])
-        fill_end_s = vial_row["end_s"]
+        fill_end_mp4_s = float(vial_row["end_s"])
 
-        # Calculate exact fill end timestamp for this vial
-        fill_end_ts = video_t0 + pd.to_timedelta(fill_end_s, unit="s")
+        # Convert MP4 playback seconds to real wall-clock datetime using time_base.py
+        fill_end_ts = mp4_to_real(fill_end_mp4_s, as_datetime=True)
+        fill_end_real_s = mp4_to_real(fill_end_mp4_s, as_datetime=False)
 
         record = {
             "vial": vial_num,
             "recipe_id": recipe_id,
-            "fill_end_s": round(fill_end_s, 3),
+            "fill_end_s": round(fill_end_mp4_s, 3),
+            "fill_end_real_s": round(fill_end_real_s, 3),
             "fill_end_timestamp": fill_end_ts.strftime("%Y-%m-%d %H:%M:%S.%f"),
         }
 

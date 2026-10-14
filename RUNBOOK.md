@@ -137,11 +137,14 @@ First time only, install the packages: `pip install -r requirements.txt`
 - **Generated output:**
   Saves the histogram to `outputs/time_gaps_histogram.png`. The terminal ends with a `RESULT:` line, either "Every camera has a frame within 2.0s of every vial's fill end" or a list of the vials and cameras that missed.
 - **Results on our data (30 vials inspected):**
-  - **`cap_seal`**: Min signed gap: `-0.961 s`, Max signed gap: `+0.984 s`, Mean signed gap: `-0.000 s` (Max absolute gap: `0.984 s`, Mean absolute gap: `0.551 s`).
-  - **`tank_level`**: Min signed gap: `-0.961 s`, Max signed gap: `+0.984 s`, Mean signed gap: `-0.000 s` (Max absolute gap: `0.984 s`, Mean absolute gap: `0.551 s`).
-  - **`vial_fill`**: Min signed gap: `-0.961 s`, Max signed gap: `+0.984 s`, Mean signed gap: `-0.000 s` (Max absolute gap: `0.984 s`, Mean absolute gap: `0.551 s`).
-  - **Clock offset check:** None of the cameras has gaps of all one sign; gaps are balanced on both sides of zero (`-0.961 s` to `+0.984 s`) with mean `-0.000 s`, so there is no systematic clock offset.
-  - **2-second threshold check:** 0 vials failed. Every camera has a frame within 2.0s of every vial's fill end (max absolute gap is `0.984 s`).
+  - **All 30 vials (overall)**:
+    - **`cap_seal`**: Min signed gap: `-362.683 s`, Max signed gap: `+0.972 s`, Mean signed gap: `-41.718 s` (Max absolute gap: `362.683 s`, Mean absolute gap: `42.215 s`).
+    - **`tank_level`**: Min signed gap: `-362.683 s`, Max signed gap: `+0.972 s`, Mean signed gap: `-41.718 s` (Max absolute gap: `362.683 s`, Mean absolute gap: `42.215 s`).
+    - **`vial_fill`**: Min signed gap: `-362.683 s`, Max signed gap: `+0.972 s`, Mean signed gap: `-41.718 s` (Max absolute gap: `362.683 s`, Mean absolute gap: `42.215 s`).
+  - **Vials 1–24 (captured in still images)**:
+    - All 3 cameras: Min signed gap: `-0.927 s`, Max signed gap: `+0.972 s`, Mean signed gap: `+0.089 s` (Max absolute gap: `0.972 s`, Mean absolute gap: `0.532 s`).
+    - **Clock offset check:** Gaps are evenly distributed on both sides of zero (`-0.927 s` to `+0.972 s`) with mean `+0.089 s`, confirming no systematic clock offset.
+  - **2-second threshold check:** Exactly 6 vials (25–30) have no frame within 2.0 s because still-image capture stopped at 20:15:27 (1697.1 real seconds), while Vials 25–30 completed fills between 20:16:01 and 20:21:30. All 24 captured vials (1–24) passed within 0.972 s.
 
 ---
 

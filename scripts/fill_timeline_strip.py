@@ -4,15 +4,21 @@ Generates visual timeline contact strips for vial_fill frames from Video 5.
 1. outputs/fill_timeline_250_340.png (frames between 250s and 340s)
 2. outputs/fill_timeline_0_90.png (frames between 0s and 90s, vials 1-3)
 
-Each frame displays the image with its video_s, vial number, and in_fill value printed underneath.
+Gets vial numbers and in_fill status from annotations/video5_vial_times_corrected.csv
+using time_base.py to convert real timestamps to MP4 time.
 """
 
+from datetime import datetime
 import math
 from pathlib import Path
+import sys
 import cv2
 import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
+
+sys.path.insert(0, str(Path(__file__).resolve().parent))
+from time_base import real_to_mp4, MP4_T0_DATETIME
 
 
 def make_timeline_strip(
@@ -33,7 +39,6 @@ def make_timeline_strip(
         print(f"No frames found between {start_s}s and {end_s}s.")
         return
 
-    # Determine grid layout: aim for ~8-9 columns
     n_cols = 9
     n_rows = math.ceil(n_frames / n_cols)
 
@@ -62,14 +67,14 @@ def make_timeline_strip(
         ax.set_xticks([])
         ax.set_yticks([])
 
-        # Determine label text
+        # Determine label text from corrected vial annotations
         vial_val = (
             f"Vial {int(row['vial'])}" if pd.notna(row["vial"]) else "No Vial"
         )
         in_fill_val = int(row["in_fill"])
         video_s_val = row["video_s"]
 
-        # Color-code border or text depending on in_fill
+        # Color-code border depending on in_fill
         border_color = "#198754" if in_fill_val == 1 else "#6c757d"
         for spine in ax.spines.values():
             spine.set_color(border_color)
@@ -84,7 +89,6 @@ def make_timeline_strip(
             labelpad=4,
         )
 
-    # Turn off unused subplots
     for idx in range(n_frames, len(axes_flat)):
         axes_flat[idx].axis("off")
 
@@ -104,7 +108,8 @@ def make_timeline_strip(
 
 def main():
     base_dir = Path(__file__).resolve().parent.parent
-    labels_file = (
+    vial_times_file = base_dir / "annotations" / "video5_vial_times_corrected.csv"
+    frame_labels_raw = (
         base_dir
         / "data"
         / "csi-vial-fill-dataset"
@@ -117,10 +122,45 @@ def main():
     )
     outputs_dir = base_dir / "outputs"
 
-    if not labels_file.exists():
-        raise FileNotFoundError(f"Labels file not found: {labels_file}")
+    if not vial_times_file.exists():
+        raise FileNotFoundError(f"Vial times file not found: {vial_times_file}")
+    if not frame_labels_raw.exists():
+        raise FileNotFoundError(f"Raw frame labels not found: {frame_labels_raw}")
 
-    df = pd.read_csv(labels_file)
+    vial_times = pd.read_csv(vial_times_file)
+    raw_df = pd.read_csv(frame_labels_raw)
+
+    # Recompute vial number and in_fill for each frame from annotations/video5_vial_times_corrected.csv
+    corrected_records = []
+    for _, row in raw_df.iterrows():
+        ts = datetime.strptime(row["timestamp"], "%Y-%m-%d %H:%M:%S.%f")
+        real_s = (ts - MP4_T0_DATETIME).total_seconds()
+        mp4_s = real_to_mp4(ts)
+
+        matching = vial_times[
+            (vial_times["mp4_start_s"] <= mp4_s)
+            & (mp4_s <= vial_times["mp4_end_s"])
+        ]
+        if len(matching) > 0:
+            v_match = matching.iloc[0]
+            vial_num = int(v_match["vial"])
+            in_fill = 1
+        else:
+            vial_num = None
+            in_fill = 0
+
+        corrected_records.append(
+            {
+                "filename": row["filename"],
+                "timestamp": row["timestamp"],
+                "video_s": real_s,
+                "mp4_s": mp4_s,
+                "in_fill": in_fill,
+                "vial": vial_num,
+            }
+        )
+
+    df = pd.DataFrame(corrected_records)
 
     # 1. Strip between 250s and 340s
     strip_250_340 = outputs_dir / "fill_timeline_250_340.png"
@@ -129,7 +169,7 @@ def main():
         start_s=250.0,
         end_s=340.0,
         output_path=strip_250_340,
-        title="vial_fill Timeline: 250s to 340s",
+        title="vial_fill Timeline: 250s to 340s (Corrected Vials)",
         images_dir=images_dir,
     )
 
@@ -140,7 +180,7 @@ def main():
         start_s=0.0,
         end_s=90.0,
         output_path=strip_0_90,
-        title="vial_fill Timeline: 0s to 90s (Vials 1–3)",
+        title="vial_fill Timeline: 0s to 90s (Vials 1–3, Corrected Vials)",
         images_dir=images_dir,
     )
 
