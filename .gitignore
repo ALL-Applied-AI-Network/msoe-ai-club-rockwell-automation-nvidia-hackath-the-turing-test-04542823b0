@@ -43,3 +43,15 @@ __pycache__/
 *$py.class
 .pytest_cache/
 .ipynb_checkpoints/
+
+# Synthetic renders and Brev results copied back to the laptop
+synthetic/
+renders/
+
+# Agent and editor scratch files
+.gemini/tmp/
+.claude/settings.local.json
+
+# OS junk
+.DS_Store
+Thumbs.db
