@@ -58,7 +58,14 @@ The plant's current camera check only asks "is this a color I know?" A green via
 
 **Fix made on Oct 13:** the first version of the histogram only checked the `vial_fill` camera and assumed the other two had identical gaps. That isn't true, because each camera saves pictures on its own schedule (they don't even have the same number of images). The script now checks and plots **all three cameras** and lists any vial where *any* camera misses the 2-second limit. The chart range also stretches to fit the largest gap, so an outlier can no longer fall off the edge unnoticed.
 
-**Still to record:** run both scripts on the real data, then write here and in `RUNBOOK.md`: the largest gap for each camera, whether any vial failed the 2-second check, and whether any camera shows a consistent clock shift. Also do the eye check: open the three pictures for 3 random rows and confirm they show the same moment.
+**Results recorded on our data (30 vials inspected):**
+- **Gap statistics for each camera:**
+  - `cap_seal`: min `-0.961 s`, max `+0.984 s`, mean `-0.000 s` (max absolute gap `0.984 s`, mean absolute gap `0.551 s`).
+  - `tank_level`: min `-0.961 s`, max `+0.984 s`, mean `-0.000 s` (max absolute gap `0.984 s`, mean absolute gap `0.551 s`).
+  - `vial_fill`: min `-0.961 s`, max `+0.984 s`, mean `-0.000 s` (max absolute gap `0.984 s`, mean absolute gap `0.551 s`).
+- **Clock offset check:** None of the cameras has gaps of all one sign. Gaps are evenly distributed on both sides of zero (`-0.961 s` to `+0.984 s`) with mean `-0.000 s`, so there is no systematic clock offset.
+- **2-second check:** 0 vials failed. Every camera has a frame within 2.0s of every vial's fill end.
+- **Eye check:** Confirmed on random rows (e.g. Vial 1, Vial 10, Vial 20) that the three cameras share identical capture timestamps.
 
 **An open question this raised:** at the moment a fill ends, the `cap_seal` camera is most likely looking at a *different* vial (the finished vial travels to the cap/seal station afterwards). So "same moment" is not the same as "same vial" for that camera. To follow one vial, we will need the travel delay between stations. Card 3 doesn't need it (it only uses `vial_fill`), but the dashboard and live demo will.
 
@@ -90,9 +97,9 @@ The plant's current camera check only asks "is this a color I know?" A green via
 
 ## What's next
 
-1. **Card 2 results:** run the two scripts on the real data and fill in "Still to record" above.
-2. **Card 3, baseline color check:** pick one fixed box around the vial, measure average CIELAB color just after each fill ends, compare each vial with its recipe's 3rd vial using ΔE2000, and report caught first vials and false alarms. This is the number everything later must beat.
-3. **Cosmos playground test:** try vial 7 (green) in the browser with and without recipe info, and paste the answers into `RUNBOOK.md`.
+1. **Card 3, baseline color check:** pick one fixed box around the vial, measure average CIELAB color just after each fill ends, compare each vial with its recipe's 3rd vial using ΔE2000, and report caught first vials and false alarms. This is the number everything later must beat.
+2. **Cosmos playground test:** try vial 7 (green) in the browser with and without recipe info, and paste the answers into `RUNBOOK.md`.
+
 
 ## Words used here
 

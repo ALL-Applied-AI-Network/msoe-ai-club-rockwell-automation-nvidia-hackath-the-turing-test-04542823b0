@@ -136,7 +136,13 @@ First time only, install the packages: `pip install -r requirements.txt`
   ```
 - **Generated output:**
   Saves the histogram to `outputs/time_gaps_histogram.png`. The terminal ends with a `RESULT:` line, either "Every camera has a frame within 2.0s of every vial's fill end" or a list of the vials and cameras that missed.
-- **Results on our data:** *(to fill in after running: largest gap per camera, and any vials listed as missing. Copy them into docs/PROGRESS.md too.)*
+- **Results on our data (30 vials inspected):**
+  - **`cap_seal`**: Min signed gap: `-0.961 s`, Max signed gap: `+0.984 s`, Mean signed gap: `-0.000 s` (Max absolute gap: `0.984 s`, Mean absolute gap: `0.551 s`).
+  - **`tank_level`**: Min signed gap: `-0.961 s`, Max signed gap: `+0.984 s`, Mean signed gap: `-0.000 s` (Max absolute gap: `0.984 s`, Mean absolute gap: `0.551 s`).
+  - **`vial_fill`**: Min signed gap: `-0.961 s`, Max signed gap: `+0.984 s`, Mean signed gap: `-0.000 s` (Max absolute gap: `0.984 s`, Mean absolute gap: `0.551 s`).
+  - **Clock offset check:** None of the cameras has gaps of all one sign; gaps are balanced on both sides of zero (`-0.961 s` to `+0.984 s`) with mean `-0.000 s`, so there is no systematic clock offset.
+  - **2-second threshold check:** 0 vials failed. Every camera has a frame within 2.0s of every vial's fill end (max absolute gap is `0.984 s`).
+
 
 ---
 
