@@ -64,8 +64,7 @@ The plant's current camera check only asks "is this a color I know?" A green via
   - `tank_level`: min `-0.961 s`, max `+0.984 s`, mean `-0.000 s` (max absolute gap `0.984 s`, mean absolute gap `0.551 s`).
   - `vial_fill`: min `-0.961 s`, max `+0.984 s`, mean `-0.000 s` (max absolute gap `0.984 s`, mean absolute gap `0.551 s`).
 - **Clock offset check:** None of the cameras has gaps of all one sign. Gaps are evenly distributed on both sides of zero (`-0.961 s` to `+0.984 s`) with mean `-0.000 s`, so there is no systematic clock offset.
-- **2-second check:** 0 vials failed. Every camera has a frame within 2.0s of every vial's fill end.
-- **Eye check:** the three file names for each vial carry the same timestamp. A person still needs to open the images for 3 rows to confirm they show the same moment, and whether cap_seal shows the same vial.
+- **Eye check:** the three file names for each vial carry the same timestamp. Opening vials 1, 7 and 20 in `outputs/aligned_check.png` confirmed the three cameras captured the exact same moment, but `cap_seal` shows earlier vials (or an empty rack for vial 1) because finished vials travel downstream to that station.
 - **Lesson for Card 3:** about half the nearest frames were taken up to ~1 s before the fill ended, when liquid may still be pouring. Card 3 uses the first frame after each fill’s end time, not the nearest one.
 
 **An open question this raised:** at the moment a fill ends, the `cap_seal` camera is most likely looking at a *different* vial (the finished vial travels to the cap/seal station afterwards). So "same moment" is not the same as "same vial" for that camera. To follow one vial, we will need the travel delay between stations. Card 3 doesn't need it (it only uses `vial_fill`), but the dashboard and live demo will.

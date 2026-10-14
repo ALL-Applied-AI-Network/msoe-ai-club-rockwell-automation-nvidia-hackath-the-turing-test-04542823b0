@@ -143,6 +143,18 @@ First time only, install the packages: `pip install -r requirements.txt`
   - **Clock offset check:** None of the cameras has gaps of all one sign; gaps are balanced on both sides of zero (`-0.961 s` to `+0.984 s`) with mean `-0.000 s`, so there is no systematic clock offset.
   - **2-second threshold check:** 0 vials failed. Every camera has a frame within 2.0s of every vial's fill end (max absolute gap is `0.984 s`).
 
+---
+
+### Script: `scripts/show_aligned_frames.py`
+- **Purpose:** Generates a 3×3 visual comparison image for vials 1, 7, and 20 showing `vial_fill`, `tank_level`, and `cap_seal` side by side to perform human eye verification of the camera alignment.
+- **Run command:**
+  ```powershell
+  python scripts/show_aligned_frames.py
+  ```
+- **Generated output:**
+  Saves the comparison grid to `outputs/aligned_check.png`.
+
+
 
 ---
 
