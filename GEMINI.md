@@ -102,7 +102,7 @@ We use **two** agents. We do **not** use Codex, GPT-6 Astra, or any other agent.
 
 ## 7. Where things stand (update after every card)
 
-- **Done:** Card 1 (data inventory in RUNBOOK.md; `scripts/show_examples.py` contact sheet) and Card 2 (`scripts/align_cameras.py` nearest frame per camera for all 30 labeled vials; `scripts/plot_time_gaps.py` histogram and >2 s check for all three cameras). Cosmos template `scripts/ask_cosmos.py` added.
+- **Done:** Card 1 (data inventory in RUNBOOK.md; `scripts/show_examples.py` contact sheet) and Card 2 (`scripts/align_cameras.py` nearest frame per camera for all 30 labeled vials; `scripts/plot_time_gaps.py` histogram and >2 s check for all three cameras; `scripts/show_aligned_frames.py`; `scripts/last_frame_per_vial.py` 5x6 contact sheet and label check). Cosmos template `scripts/ask_cosmos.py` added.
 - **Next:** Card 3, baseline color check (`scripts/crop_vial.py`, average CIELAB, ΔE2000 to the recipe's clean 3rd vial, leave-one-recipe-out).
 - **The story so far, in plain English with the reasons:** `docs/PROGRESS.md`. After finishing any card, add a section there (what we did, what we found, why we did it that way) and update this list.
 

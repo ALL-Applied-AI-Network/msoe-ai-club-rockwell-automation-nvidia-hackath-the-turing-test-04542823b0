@@ -51,6 +51,7 @@ renders/
 # Agent and editor scratch files
 .gemini/tmp/
 .claude/settings.local.json
+scratch/
 
 # OS junk
 .DS_Store

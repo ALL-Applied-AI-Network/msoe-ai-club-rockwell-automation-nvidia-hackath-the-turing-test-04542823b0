@@ -69,6 +69,25 @@ The plant's current camera check only asks "is this a color I know?" A green via
 
 **An open question this raised:** at the moment a fill ends, the `cap_seal` camera is most likely looking at a *different* vial (the finished vial travels to the cap/seal station afterwards). So "same moment" is not the same as "same vial" for that camera. To follow one vial, we will need the travel delay between stations. Card 3 doesn't need it (it only uses `vial_fill`), but the dashboard and live demo will.
 
+### Label check · Physical inspection of video 5 frames
+
+**What:** we inspected the actual still frames from the `vial_fill` camera for all 30 labeled vials across video 5 to verify whether the fill timings and liquid volumes in `video5_vial_recipes.csv` and `video5_frame_labels.csv` match what appears on camera (`scripts/last_frame_per_vial.py` → `outputs/last_frame_per_vial.png` and `outputs/last_frame_per_vial.csv`).
+
+**What we found (facts visible directly in the images):**
+- **Fill timing discrepancy:** The physical dispenses do not begin or end at the times recorded in `video5_vial_recipes.csv`. For example, for labeled vial 7, liquid starts pouring out of the nozzle into the vial around 271.0 s, whereas the recipe table lists `start_s = 284.7 s`. Furthermore, labeled vial 7 departs the station under conveyor motion around 301.2 s, whereas the recipe table lists `end_s = 308.0 s` (the station is completely empty from 303.2 s to 307.2 s, even though `video5_frame_labels.csv` labels those frames as `vial = 7, in_fill = 1`).
+- **Liquid height comparison for vials 4–9 (measured in pixels from the bottom inside curve of the vial at y ≈ 392 to the liquid meniscus):**
+  - **Vial 4 (190.6 s):** ~27 px (stream actively dispensing).
+  - **Vial 5 (240.9 s):** ~27 px (stream actively dispensing).
+  - **Vial 6 (246.9 s, Recipe 6, 40 mL):** ~102 px (meniscus at y ≈ 290).
+  - **Labeled Vial 7 (299.2 s, Recipe 7 labeled, 70 mL expected):** ~102 px (meniscus at y ≈ 290). The liquid height in labeled vial 7 matches Vial 6 (40 mL), not the 70 mL fill height.
+  - **Labeled Vial 8 (375.7 s, Recipe 7 labeled):** ~178 px (meniscus at y ≈ 214).
+  - **Labeled Vial 9 (423.9 s, Recipe 7 labeled):** ~178 px (meniscus at y ≈ 214).
+- **Color observation across vials 6–9:**
+  - **Vial 6 (246.9 s):** orange/amber liquid.
+  - **Labeled Vial 7 (299.2 s):** orange/amber liquid. No blue liquid or blue stream is visible in any frame while this vial is parked.
+  - **Labeled Vial 8 (375.7 s):** the first labeled vial where blue appears. A blue stream is visible pouring from the nozzle into the vial from ~355.5 s to ~371.6 s, mixing with orange liquid sitting in the base to produce dark green/muddy liquid.
+  - **Labeled Vial 9 (423.9 s):** contains clean blue liquid throughout.
+
 ### Cosmos groundwork (Oct 13)
 
 **What:** `scripts/ask_cosmos.py`, a small tested script that sends pictures (or a short video) and a question to NVIDIA's **Cosmos 3 Nano Reasoner** and prints its answer, plus step-by-step instructions in `RUNBOOK.md` for running Cosmos on a rented Brev GPU.

@@ -154,6 +154,18 @@ First time only, install the packages: `pip install -r requirements.txt`
 - **Generated output:**
   Saves the comparison grid to `outputs/aligned_check.png`.
 
+---
+
+### Script: `scripts/last_frame_per_vial.py` (Card 2 label check)
+- **Purpose:** Identifies the last still frame where each of the 30 labeled vials is parked under the nozzle before conveyor movement, saving a CSV list and a 5×6 contact sheet.
+- **Run command:**
+  ```powershell
+  python scripts/last_frame_per_vial.py
+  ```
+- **Generated output:**
+  - `outputs/last_frame_per_vial.csv` (vial, recipe_id, filename, video_s)
+  - `outputs/last_frame_per_vial.png` (5×6 contact sheet)
+
 
 
 ---
