@@ -65,28 +65,41 @@ The plant's current camera check only asks "is this a color I know?" A green via
   - `vial_fill`: min `-0.961 s`, max `+0.984 s`, mean `-0.000 s` (max absolute gap `0.984 s`, mean absolute gap `0.551 s`).
 - **Clock offset check:** None of the cameras has gaps of all one sign. Gaps are evenly distributed on both sides of zero (`-0.961 s` to `+0.984 s`) with mean `-0.000 s`, so there is no systematic clock offset.
 - **Eye check:** the three file names for each vial carry the same timestamp. Opening vials 1, 7 and 20 in `outputs/aligned_check.png` confirmed the three cameras captured the exact same moment, but `cap_seal` shows earlier vials (or an empty rack for vial 1) because finished vials travel downstream to that station.
-- **Lesson for Card 3:** about half the nearest frames were taken up to ~1 s before the fill ended, when liquid may still be pouring. Card 3 uses the first frame after each fill’s end time, not the nearest one.
+- **Lesson for Card 3:** Card 3 measures each vial in the last parked frame from annotations/video5_vial_times_corrected.csv, not from the label times.
 
 **An open question this raised:** at the moment a fill ends, the `cap_seal` camera is most likely looking at a *different* vial (the finished vial travels to the cap/seal station afterwards). So "same moment" is not the same as "same vial" for that camera. To follow one vial, we will need the travel delay between stations. Card 3 doesn't need it (it only uses `vial_fill`), but the dashboard and live demo will.
 
 ### Label check · Physical inspection of video 5 frames
 
-**What:** we inspected the actual still frames from the `vial_fill` camera for all 30 labeled vials across video 5 to verify whether the fill timings and liquid volumes in `video5_vial_recipes.csv` and `video5_frame_labels.csv` match what appears on camera (`scripts/last_frame_per_vial.py` → `outputs/last_frame_per_vial.png` and `outputs/last_frame_per_vial.csv`).
+**What:** we inspected the actual still frames from the `vial_fill` camera for all labeled vials across video 5 to verify whether the fill timings and liquid volumes in `video5_vial_recipes.csv` and `video5_frame_labels.csv` match what appears on camera (`scripts/find_physical_fills.py` → `outputs/physical_fills.csv`, `outputs/physical_fills_sheet.png`, and `annotations/video5_vial_times_corrected.csv`).
 
-**What we found (facts visible directly in the images):**
-- **Fill timing discrepancy:** The physical dispenses do not begin or end at the times recorded in `video5_vial_recipes.csv`. For example, for labeled vial 7, liquid starts pouring out of the nozzle into the vial around 271.0 s, whereas the recipe table lists `start_s = 284.7 s`. Furthermore, labeled vial 7 departs the station under conveyor motion around 301.2 s, whereas the recipe table lists `end_s = 308.0 s` (the station is completely empty from 303.2 s to 307.2 s, even though `video5_frame_labels.csv` labels those frames as `vial = 7, in_fill = 1`).
-- **Liquid height comparison for vials 4–9 (measured in pixels from the bottom inside curve of the vial at y ≈ 392 to the liquid meniscus):**
-  - **Vial 4 (190.6 s):** ~27 px (stream actively dispensing).
-  - **Vial 5 (240.9 s):** ~27 px (stream actively dispensing).
-  - **Vial 6 (246.9 s, Recipe 6, 40 mL):** ~102 px (meniscus at y ≈ 290).
-  - **Labeled Vial 7 (299.2 s, Recipe 7 labeled, 70 mL expected):** ~102 px (meniscus at y ≈ 290). The liquid height in labeled vial 7 matches Vial 6 (40 mL), not the 70 mL fill height.
-  - **Labeled Vial 8 (375.7 s, Recipe 7 labeled):** ~178 px (meniscus at y ≈ 214).
-  - **Labeled Vial 9 (423.9 s, Recipe 7 labeled):** ~178 px (meniscus at y ≈ 214).
-- **Color observation across vials 6–9:**
-  - **Vial 6 (246.9 s):** orange/amber liquid.
-  - **Labeled Vial 7 (299.2 s):** orange/amber liquid. No blue liquid or blue stream is visible in any frame while this vial is parked.
-  - **Labeled Vial 8 (375.7 s):** the first labeled vial where blue appears. A blue stream is visible pouring from the nozzle into the vial from ~355.5 s to ~371.6 s, mixing with orange liquid sitting in the base to produce dark green/muddy liquid.
-  - **Labeled Vial 9 (423.9 s):** contains clean blue liquid throughout.
+**Usable test set:** fills 1–24 (Recipes 5–12, 8 recipes × 3 vials), with 7 carryover first vials (fills 4, 7, 10, 13, 16, 19, 22); fill 25 is partial; vials 26–30 are not in video 5. Fill 4 (dark) and fill 7 (green) are visible carryover examples.
+
+**What we saw in the images (visual facts):**
+- **Total physical fill count:** exactly **25 physical fills** occur in video 5 (not 30). Video 5 ends at 1697.1 s while Fill 25 is actively pouring. Fills for rows 26–30 never occur in this video (video duration in `videos.csv` is 1698 s; last frame in `video5_frame_labels.csv` is at 1697.142 s with `in_fill = 0`).
+- **Stationary intervals:** out of 27 stationary periods between conveyor movements, exactly 2 are empty conveyor periods without a vial parked under the nozzle (305.2 s–321.3 s and 1658.9 s–1667.0 s; background std < 7.0), and 25 contain a parked vial (std > 40.0).
+- **Physical fill heights and measured CIELAB colors (raw unrounded values from each image):**
+  - Fills 1–3 (Recipe 5, 30 mL target): base y in [399.5, 400.5], meniscus y in [310.5, 320.5], heights 80.0–90.0 px (~2.67–3.00 px/mL). Measured Lab: Fill 1 (9.8, -9.4, 3.0), Fill 2 (5.1, -2.8, 0.0), Fill 3 (7.3, -1.4, 0.9).
+  - Fills 4–6 (Recipe 6, 40 mL target): base y = 400.5, meniscus y in [291.5, 294.5], heights 106.0–109.0 px (~2.65–2.72 px/mL). Measured Lab: Fill 4 (4.5, -1.0, 0.8 — very dark carryover from Recipe 5), Fill 5 (8.4, 6.6, 7.9), Fill 6 (12.4, 13.7, 14.4).
+  - Fills 7–9 (Recipe 7, 70 mL target): base y in [399.5, 400.5], meniscus y in [215.5, 219.5], heights 181.0–184.0 px (~2.59–2.63 px/mL). Measured Lab: Fill 7 (11.9, -10.8, 3.0 — dark green carryover), Fill 8 (26.4, -5.3, -24.0 — negative b* blue), Fill 9 (24.4, -4.7, -23.4 — clean blue reference).
+  - Fills 10–12 (Recipe 8, 60 mL target): base y in [399.5, 400.5], meniscus y in [238.5, 239.5], heights 161.0–162.0 px (~2.68–2.70 px/mL). Measured Lab: (6.0–8.4, -7.0 to -3.1, -1.5 to 3.5).
+  - Fills 13–15 (Recipe 9, 80 mL target): base y in [399.5, 400.5], meniscus y in [180.5, 191.5], heights 209.0–220.0 px (~2.61–2.75 px/mL). Measured Lab: (11.6–14.9, -4.8 to -4.3, 8.9–14.0).
+  - Fills 16–18 (Recipe 10, 75 mL target): base y in [395.5, 400.5], meniscus y in [195.5, 197.5], heights 200.0–204.0 px (~2.67–2.72 px/mL). Measured Lab: (10.5–21.6, -8.7 to -6.5, 5.3–20.1).
+  - Fills 19–21 (Recipe 11, 70 mL target): base y in [399.5, 400.5], meniscus y in [209.5, 220.5], heights 179.0–190.0 px (~2.56–2.71 px/mL). Measured Lab: (13.6–15.5, -13.2 to -9.4, -7.4 to 0.6).
+  - Fills 22–24 (Recipe 12, 70 mL target): base y = 400.5, meniscus y in [209.5, 212.5], heights 188.0–191.0 px (~2.69–2.73 px/mL). Measured Lab: Fill 22 (8.9, -3.9, 6.0), Fill 23 (18.3, 21.5, 24.6), Fill 24 (20.3, 25.3, 28.5).
+  - Fill 25 (Recipe 13, 70 mL target): base y = 400.5, meniscus y = 337.5, height = 63.0 px (partial fill interrupted mid-pour when video cut off at 1697.1 s). Measured Lab: (13.0, 11.6, 13.3).
+- **Cumulative timing drift (not a static 1-vial shift):**
+  - The gap between recorded `start_s` and physical pour start is **cumulative**: it grows by ~10–18 seconds on nearly every vial cycle.
+  - At Row 1, drift is `-1.6 s`. At Row 2, `-11.7 s`. At Row 3, `-22.5 s`.
+  - At Row 4, the label generator recorded a window at 138.2 s–161.3 s where no dispense occurred (carrier was moving and settling), while the physical pour started at 172.5 s (drift = `-34.3 s`).
+  - As the run progresses, physical cycle times (~60–85 s including conveyor moves and settling) exceed the scheduled label cycle times (~45–65 s).
+  - The drift grows steadily: `-64.8 s` at Row 7 (about 1 cycle early), `-150.8 s` at Row 14 (about 2 cycles early), `-242.4 s` at Row 21 (about 3 cycles early), reaching `-300.6 s` by Row 25 (about 4 cycles early).
+  - Because of this ~300 s cumulative drift, the scheduled table reached Row 30 (`start_s = 1671.3 s`) while the physical line had only reached Fill 25 when the camera stopped at 1697.1 s.
+
+**What it means (interpretation):**
+- The dataset labels reflect an idealized open-loop schedule rather than real-time camera trigger timestamps. The schedule accumulated ~10–18 s of lag per vial cycle against the real physical conveyor.
+- Using label `start_s` / `end_s` causes algorithms to inspect empty conveyor gaps or previous vials.
+- Corrected ground truth is codified in `annotations/video5_vial_times_corrected.csv` (vial, recipe, volume, physical fill number, pour start/end, raw coordinates, measured Lab, drift, and notes) for honest benchmarking in Card 3.
 
 ### Cosmos groundwork (Oct 13)
 

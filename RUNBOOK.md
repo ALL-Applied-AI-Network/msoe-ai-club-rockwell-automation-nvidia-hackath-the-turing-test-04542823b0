@@ -156,17 +156,27 @@ First time only, install the packages: `pip install -r requirements.txt`
 
 ---
 
-### Script: `scripts/last_frame_per_vial.py` (Card 2 label check)
-- **Purpose:** Identifies the last still frame where each of the 30 labeled vials is parked under the nozzle before conveyor movement, saving a CSV list and a 5×6 contact sheet.
+### Script: `scripts/fill_timeline_strip.py`
+- **Purpose:** Generates visual timeline contact strips for `vial_fill` frames across specified time intervals in Video 5, displaying each frame with its `video_s`, labeled vial number, and `in_fill` status underneath.
 - **Run command:**
   ```powershell
-  python scripts/last_frame_per_vial.py
+  python scripts/fill_timeline_strip.py
   ```
 - **Generated output:**
-  - `outputs/last_frame_per_vial.csv` (vial, recipe_id, filename, video_s)
-  - `outputs/last_frame_per_vial.png` (5×6 contact sheet)
+  - `outputs/fill_timeline_250_340.png` (frames between 250 s and 340 s)
+  - `outputs/fill_timeline_0_90.png` (frames between 0 s and 90 s, vials 1–3)
 
+---
 
+### Script: `scripts/find_physical_fills.py` (Physical ground truth detection)
+- **Purpose:** Identifies every physical vial fill in Video 5 directly from `vial_fill` camera images alone, ignoring `start_s` and `end_s` from label files entirely. Detects conveyor motion events and stationary parked periods, filters out empty station gaps, and records exact arrival, pour start/end, departure, raw unrounded base and meniscus coordinates, height in pixels, and measured average CIELAB color of the liquid.
+- **Run command:**
+  ```powershell
+  python scripts/find_physical_fills.py
+  ```
+- **Generated output:**
+  - `outputs/physical_fills.csv` (25 physical fills with timings, raw coordinates, heights, and measured Lab colors)
+  - `outputs/physical_fills_sheet.png` (5×5 contact sheet showing every fill's last parked frame labeled with fill number, recipe, height, measured Lab, and pour interval)
 
 ---
 
