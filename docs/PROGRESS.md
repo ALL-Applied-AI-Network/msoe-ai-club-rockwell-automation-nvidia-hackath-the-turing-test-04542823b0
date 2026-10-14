@@ -58,13 +58,14 @@ The plant's current camera check only asks "is this a color I know?" A green via
 
 **Fix made on Oct 13:** the histogram now checks all three cameras instead of assuming they match. On video 5 they did match exactly: all three cameras were triggered at the same moments, so their gaps are identical. The check stays as a safeguard in case a camera drops frames on another run.
 
-**Results recorded on our data (30 vials inspected):**
+**Results recorded on our data (all 30 vials aligned):**
 - **Gap statistics for each camera across all 30 vials:**
-  - `cap_seal`, `tank_level`, `vial_fill`: min `-362.683 s`, max `+0.972 s`, mean `-41.718 s` (max absolute gap `362.683 s`, mean absolute gap `42.215 s`).
-- **Gap statistics for Vials 1–24 (captured in still images before capture stopped at 20:15:27):**
-  - All three cameras: min `-0.927 s`, max `+0.972 s`, mean `+0.089 s` (max absolute gap `0.972 s`, mean absolute gap `0.532 s`).
-- **Clock offset check:** For the captured vials (1–24), gaps are evenly distributed on both sides of zero (`-0.927 s` to `+0.972 s`) with mean `+0.089 s`, confirming no systematic clock offset between camera hardware clocks.
-- **2-second check:** Exactly 6 vials (25–30) have no frame within 2.0 s because still-image capture stopped at 20:15:27 (1697.1 real seconds into the dataset), while Vials 25–30 completed fills between 20:16:01 and 20:21:30. All 24 captured vials (1–24) passed within 0.972 s.
+  - `cap_seal`, `tank_level`, `vial_fill`: min `-0.927 s`, max `+0.972 s`, mean `+0.070 s` (max absolute gap `0.972 s`, mean absolute gap `0.427 s`).
+- **Breakdown by source:**
+  - **Vials 1–24 (`source = still`):** min `-0.927 s`, max `+0.972 s`, mean `+0.089 s` (mean absolute gap `0.532 s`).
+  - **Vials 25–30 (`source = mp4`):** extracted from Video 5 MP4s (still capture stopped at 20:15:27, but video recorded through 20:21:35). Time gaps are within `±0.015 s` (mean absolute gap `0.007 s`).
+- **Clock offset check:** Gaps are evenly distributed on both sides of zero (`-0.927 s` to `+0.972 s`) with mean `+0.070 s`, confirming no systematic clock offset between camera hardware clocks.
+- **2-second check:** **0 vials failed.** Every camera has an aligned frame within 2.0 s across all 30 vials (max absolute gap is `0.972 s`).
 - **Eye check:** the three file names for each vial carry the same timestamp. Opening vials 1, 7 and 20 in `outputs/aligned_check.png` confirmed the three cameras captured the exact same moment, but `cap_seal` shows earlier vials (or an empty rack for vial 1) because finished vials travel downstream to that station.
 - **Lesson for Card 3:** Card 3 measures each vial in the last parked frame directly from `vial_fill_video_5.mp4` using `annotations/video5_vial_times_corrected.csv`, giving us access to all 30 vials with consistent lighting and encoding.
 
@@ -111,7 +112,17 @@ The plant's current camera check only asks "is this a color I know?" A green via
 - For Card 3, we should evaluate color and fill height directly from `vial_fill_video_5.mp4` rather than still images, ensuring identical lighting, encoding, and access to the complete 30-vial test set.
 - All corrected metadata, MP4 timestamps, real clock times, liquid coordinates, and measured CIELAB colors are codified in `annotations/video5_vial_times_corrected.csv`.
 
+### Card 3, step 1 · Fixed measurement patches and edge safety check
+
+**What:** We selected and verified three fixed measurement patches on the vial using the last parked MP4 frame of all 30 vials (`scripts/crop_vial.py` → `outputs/crop_check.png` and `outputs/crop_check_all30.png`).
+- **LOW patch (`x: [302, 318], y: [352, 372]`):** In front of the dark conveyor backdrop. Submerged in liquid across all 30 vials (including 30 mL vials, whose meniscus is at $y \approx 320.5$).
+- **HIGH patch (`x: [302, 318], y: [268, 288]`):** In front of the white paper backdrop. Sits below the black carrier bracket ($y \le 264$) and above the dark border ($y \ge 294$). Counted inside liquid only when the meniscus is at least 5 px above $y=268$; this is true for all 24 vials $\ge 60$ mL (meniscus $\le 239.5$). Empty for 30 mL and 40 mL vials.
+- **BASE patch (`x: [304, 316], y: [389, 395]`):** Inside the colored glow of the thick glass vial bottom, clearing the carrier metal block ($y \approx 396$–$403$) and hex screws ($x \le 275, x \ge 345$).
+- **Edge detection & safety check:** Detects the inner glass walls across all 30 vials ($x \in [271, 293]$ on left, $[325, 341]$ on right). Every patch is well within the liquid with **0 flagged vials** (no contact with glass walls, meniscus lines, carrier bracket, backdrop dark strip, screws, or glint reflections).
+- **Color conversion:** Patch color is extracted as the spatial median sRGB, then converted to CIELAB (D65) using `colour-science`.
+
 ### Cosmos groundwork (Oct 13)
+
 
 **What:** `scripts/ask_cosmos.py`, a small tested script that sends pictures (or a short video) and a question to NVIDIA's **Cosmos 3 Nano Reasoner** and prints its answer, plus step-by-step instructions in `RUNBOOK.md` for running Cosmos on a rented Brev GPU.
 

@@ -102,9 +102,9 @@ We use **two** agents. We do **not** use Codex, GPT-6 Astra, or any other agent.
 
 ## 7. Where things stand (update after every card)
 
-- **Done:** Card 1 (data inventory in RUNBOOK.md; `scripts/show_examples.py` contact sheet) and Card 2 (`scripts/align_cameras.py` aligned using `scripts/time_base.py`; `scripts/plot_time_gaps.py` histogram; `scripts/show_aligned_frames.py`; `scripts/find_physical_fills.py`; `scripts/fill_timeline_strip.py`; corrected annotations in `annotations/video5_vial_times_corrected.csv` and `annotations/video5_frame_labels_corrected.csv`). Cosmos template `scripts/ask_cosmos.py` added.
+- **Done:** Card 1 (data inventory in RUNBOOK.md; `scripts/show_examples.py` contact sheet), Card 2 (`scripts/align_cameras.py` aligned using `scripts/time_base.py` and MP4 video fallback for vials 25–30; `scripts/plot_time_gaps.py` histogram with 0 vials failing threshold; `scripts/show_aligned_frames.py`; `scripts/find_physical_fills.py`; `scripts/fill_timeline_strip.py`; corrected annotations in `annotations/video5_vial_times_corrected.csv` and `annotations/video5_frame_labels_corrected.csv`), and Card 3 Step 1 (`scripts/crop_vial.py` with verified LOW, HIGH, and BASE patches and glass edge detection across all 30 vials in `outputs/crop_check_all30.png`; `annotations/video5_visual_verdicts.csv`). Cosmos template `scripts/ask_cosmos.py` added.
 - **Time base rule:** Label `start_s` and `end_s` in `video5_vial_recipes.csv` are in MP4 playback seconds (30.0 fps container rate). Still-image file timestamps are in real wall-clock time (camera recorded at ~24.676 fps). Always convert between them using `scripts/time_base.py` (`mp4_to_real()`, `real_to_mp4()`). Never use `data/.../video5_frame_labels.csv` for vial numbers; use `annotations/video5_vial_times_corrected.csv` or `annotations/video5_frame_labels_corrected.csv`.
-- **Next:** Card 3, baseline color check (`scripts/crop_vial.py`, average CIELAB, ΔE2000 to the recipe's clean 3rd vial, leave-one-recipe-out).
+- **Next:** Card 3, step 2 (baseline color check: compare CIELAB ΔE2000 of each vial to its recipe's clean 3rd vial, leave-one-recipe-out evaluation).
 - **The story so far, in plain English with the reasons:** `docs/PROGRESS.md`. After finishing any card, add a section there (what we did, what we found, why we did it that way) and update this list.
 
 ---

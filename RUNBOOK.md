@@ -136,15 +136,16 @@ First time only, install the packages: `pip install -r requirements.txt`
   ```
 - **Generated output:**
   Saves the histogram to `outputs/time_gaps_histogram.png`. The terminal ends with a `RESULT:` line, either "Every camera has a frame within 2.0s of every vial's fill end" or a list of the vials and cameras that missed.
-- **Results on our data (30 vials inspected):**
+- **Results on our data (all 30 vials aligned):**
   - **All 30 vials (overall)**:
-    - **`cap_seal`**: Min signed gap: `-362.683 s`, Max signed gap: `+0.972 s`, Mean signed gap: `-41.718 s` (Max absolute gap: `362.683 s`, Mean absolute gap: `42.215 s`).
-    - **`tank_level`**: Min signed gap: `-362.683 s`, Max signed gap: `+0.972 s`, Mean signed gap: `-41.718 s` (Max absolute gap: `362.683 s`, Mean absolute gap: `42.215 s`).
-    - **`vial_fill`**: Min signed gap: `-362.683 s`, Max signed gap: `+0.972 s`, Mean signed gap: `-41.718 s` (Max absolute gap: `362.683 s`, Mean absolute gap: `42.215 s`).
-  - **Vials 1–24 (captured in still images)**:
-    - All 3 cameras: Min signed gap: `-0.927 s`, Max signed gap: `+0.972 s`, Mean signed gap: `+0.089 s` (Max absolute gap: `0.972 s`, Mean absolute gap: `0.532 s`).
-    - **Clock offset check:** Gaps are evenly distributed on both sides of zero (`-0.927 s` to `+0.972 s`) with mean `+0.089 s`, confirming no systematic clock offset.
-  - **2-second threshold check:** Exactly 6 vials (25–30) have no frame within 2.0 s because still-image capture stopped at 20:15:27 (1697.1 real seconds), while Vials 25–30 completed fills between 20:16:01 and 20:21:30. All 24 captured vials (1–24) passed within 0.972 s.
+    - **`cap_seal`**: Min signed gap: `-0.927 s`, Max signed gap: `+0.972 s`, Mean signed gap: `+0.070 s` (Max absolute gap: `0.972 s`, Mean absolute gap: `0.427 s`).
+    - **`tank_level`**: Min signed gap: `-0.927 s`, Max signed gap: `+0.972 s`, Mean signed gap: `+0.070 s` (Max absolute gap: `0.972 s`, Mean absolute gap: `0.427 s`).
+    - **`vial_fill`**: Min signed gap: `-0.927 s`, Max signed gap: `+0.972 s`, Mean signed gap: `+0.070 s` (Max absolute gap: `0.972 s`, Mean absolute gap: `0.427 s`).
+  - **Source breakdown**:
+    - **Vials 1–24 (`source = 'still'`)**: Min gap `-0.927 s`, Max gap `+0.972 s`, Mean gap `+0.089 s` (mean absolute gap `0.532 s`).
+    - **Vials 25–30 (`source = 'mp4'`)**: Extracted from Video 5 MP4s (still capture stopped at 20:15:27, but video recorded all 30 vials through 20:21:35). Time gaps are within `±0.015 s` (less than half an MP4 frame; max absolute gap `0.015 s`).
+  - **Clock offset check**: Gaps are balanced on both sides of zero (`-0.927 s` to `+0.972 s`) with mean `+0.070 s`, confirming no systematic clock offset.
+  - **2-second threshold check**: **0 vials failed.** Every camera has an aligned frame within 2.0 s for every vial (max absolute gap across all 30 vials is `0.972 s`).
 
 ---
 
@@ -180,6 +181,22 @@ First time only, install the packages: `pip install -r requirements.txt`
 - **Generated output:**
   - `outputs/physical_fills.csv` (25 physical fills with timings, raw coordinates, heights, and measured Lab colors)
   - `outputs/physical_fills_sheet.png` (5×5 contact sheet showing every fill's last parked frame labeled with fill number, recipe, height, measured Lab, and pour interval)
+
+### Script: `scripts/crop_vial.py` (Card 3 measurement patches)
+- **Purpose:** Defines three fixed measurement patches inside the vial for Card 3 color analysis:
+  1. **LOW patch** (`x: [302, 318], y: [352, 372]`): submerged in liquid for all 30 vials (even 30 mL), in front of the dark conveyor background.
+  2. **HIGH patch** (`x: [302, 318], y: [268, 288]`): sits in front of the white paper backdrop below the carrier bracket, inside liquid for all 24 vials >= 60 mL (where meniscus is >= 5 px above y=268).
+  3. **BASE patch** (`x: [304, 316], y: [389, 395]`): experimental patch in the colored glow of the thick glass vial bottom, just above the metal holding block and clear of screws.
+  Computes the spatial median sRGB for each patch and converts it to CIELAB (D65) using `colour-science`. Automatically detects glass edges at each patch height and checks for any contact with glass walls, meniscus lines, carrier bracket, dark strip, screws, or specular glints (> 200 intensity).
+- **Run command:**
+  ```powershell
+  python scripts/crop_vial.py
+  ```
+- **Generated output:**
+  - `outputs/crop_check.png` (5-vial visual check showing patches on vials 3, 6, 9, 15, and 28)
+  - `outputs/crop_check_all30.png` (5×6 contact grid of all 30 vials with patches and median Lab values)
+  - Prints glass edges, liquid coverage status, and median CIELAB colors for all 30 vials.
+
 
 ---
 
