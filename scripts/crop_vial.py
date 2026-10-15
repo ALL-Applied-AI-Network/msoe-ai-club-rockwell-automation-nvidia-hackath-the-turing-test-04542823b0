@@ -13,8 +13,9 @@ Reads:
 - data/csi-vial-fill-dataset/vial_fill/videos/vial_fill_video_5.mp4
 
 Writes:
-- outputs/crop_check.png (visual verification showing patches on vials 3, 6, 9, 15, and 28)
-- outputs/crop_check_all30.png (5x6 grid of all 30 vials with all 3 patches drawn)
+- outputs/card3/crop_check.png (visual verification showing patches on vials 3, 6, 9, 15, and 28)
+- outputs/card3/crop_check_all30.png (5x6 grid of all 30 vials with all 3 patches drawn)
+- outputs/card3/judging_sheet.png (10x3 grid: 1 row per recipe, labeled only 'Vial N (Recipe R)')
 """
 
 from pathlib import Path
@@ -131,9 +132,10 @@ def run_patch_analysis():
         / "videos"
         / "vial_fill_video_5.mp4"
     )
-    outputs_dir = base_dir / "outputs"
+    outputs_dir = base_dir / "outputs" / "card3"
     output_5_png = outputs_dir / "crop_check.png"
     output_all_png = outputs_dir / "crop_check_all30.png"
+    output_judging_png = outputs_dir / "judging_sheet.png"
 
     outputs_dir.mkdir(parents=True, exist_ok=True)
 
@@ -270,7 +272,7 @@ def run_patch_analysis():
         ax.axis("off")
 
     plt.suptitle(
-        "Card 3 Step 1 — Fixed Measurement Patches (Outputs/crop_check.png)\n"
+        "Card 3 Step 1 — Fixed Measurement Patches (outputs/card3/crop_check.png)\n"
         "HIGH (Green): x=[302, 318], y=[268, 288] | LOW (Blue): x=[302, 318], y=[352, 372] | BASE (Orange): x=[304, 316], y=[389, 395]",
         fontsize=12,
         fontweight="bold",
@@ -281,7 +283,7 @@ def run_patch_analysis():
     plt.close(fig5)
     print(f"Saved 5-vial verification to: {output_5_png}")
 
-    # 7. Generate all 30 vials visual check (outputs/crop_check_all30.png)
+    # 7. Generate all 30 vials visual check (outputs/card3/crop_check_all30.png)
     fig30, axes30 = plt.subplots(5, 6, figsize=(22, 24))
     fig30.patch.set_facecolor("#f8f9fa")
     axes30_flat = axes30.flatten()
@@ -305,7 +307,7 @@ def run_patch_analysis():
 
     plt.suptitle(
         "Card 3 Step 1 — All 30 Vials Fixed Patches (HIGH: Green, LOW: Blue, BASE: Orange)\n"
-        "Outputs/crop_check_all30.png",
+        "outputs/card3/crop_check_all30.png",
         fontsize=14,
         fontweight="bold",
         y=0.99,
@@ -315,7 +317,40 @@ def run_patch_analysis():
     plt.close(fig30)
     print(f"Saved 30-vial verification grid to: {output_all_png}")
 
-    # 8. Print Results Table
+    # 8. Generate judging sheet (10 rows x 3 columns)
+    # One row per recipe (3 vials side by side, 10 rows), each tile labeled only 'Vial N (Recipe R)'
+    fig_judge, axes_judge = plt.subplots(10, 3, figsize=(10, 28))
+    fig_judge.patch.set_facecolor("#ffffff")
+
+    for r_idx in range(10):
+        for c_idx in range(3):
+            v_num = r_idx * 3 + c_idx + 1
+            ax = axes_judge[r_idx, c_idx]
+            if v_num in vial_frames:
+                frame, r = vial_frames[v_num]
+                vial_crop = frame[CROP_Y1:CROP_Y2, CROP_X1:CROP_X2]
+                ax.imshow(cv2.cvtColor(vial_crop, cv2.COLOR_BGR2RGB))
+                ax.set_title(
+                    f"Vial {v_num} (Recipe {int(r['recipe_id'])})",
+                    fontsize=9,
+                    fontweight="bold",
+                    pad=5,
+                )
+            ax.axis("off")
+
+    plt.suptitle(
+        "Card 3 — Human Eye Visual Judging Sheet (10 Recipes × 3 Vials)\n"
+        "outputs/card3/judging_sheet.png",
+        fontsize=13,
+        fontweight="bold",
+        y=0.995,
+    )
+    plt.tight_layout(rect=[0, 0, 1, 0.99])
+    plt.savefig(output_judging_png, dpi=180, facecolor=fig_judge.get_facecolor())
+    plt.close(fig_judge)
+    print(f"Saved judging sheet to: {output_judging_png}")
+
+    # 9. Print Results Table
     table_df = pd.DataFrame(analysis_rows)
     print("\n" + "=" * 120)
     print("ALL 30 VIALS GLASS EDGES, LIQUID COVERAGE, AND MEDIAN CIELAB (D65) COLORS:")

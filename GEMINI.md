@@ -154,6 +154,8 @@ Main packages: `opencv-python` (images/video), `numpy`, `pandas` (tables), `matp
 - Never accept or present a number you can't explain; say what could make it wrong.
 - After a step works: add its command to RUNBOOK.md, add a plain-English entry to docs/PROGRESS.md, then commit with a clear message.
 - Keep explanations beginner-friendly, encouraging and actionable.
+- Debug and one-off images go in scratch/, never outputs/. Real results go in outputs/<card>/ and are listed in RUNBOOK.md's Current outputs table.
+- scratch/ is throwaway and may be emptied at any time; never put anything there that a result depends on.
 
 ---
 

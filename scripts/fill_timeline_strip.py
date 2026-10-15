@@ -1,8 +1,8 @@
 """
 scripts/fill_timeline_strip.py
 Generates visual timeline contact strips for vial_fill frames from Video 5.
-1. outputs/fill_timeline_250_340.png (frames between 250s and 340s)
-2. outputs/fill_timeline_0_90.png (frames between 0s and 90s, vials 1-3)
+1. outputs/card2/fill_timeline_250_340.png (frames between 250s and 340s)
+2. outputs/card2/fill_timeline_0_90.png (frames between 0s and 90s, vials 1-3)
 
 Gets vial numbers and in_fill status from annotations/video5_vial_times_corrected.csv
 using time_base.py to convert real timestamps to MP4 time.
@@ -120,7 +120,8 @@ def main():
     images_dir = (
         base_dir / "data" / "csi-vial-fill-dataset" / "vial_fill" / "images"
     )
-    outputs_dir = base_dir / "outputs"
+    outputs_dir = base_dir / "outputs" / "card2"
+    outputs_dir.mkdir(parents=True, exist_ok=True)
 
     if not vial_times_file.exists():
         raise FileNotFoundError(f"Vial times file not found: {vial_times_file}")

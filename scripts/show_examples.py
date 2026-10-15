@@ -6,7 +6,7 @@ and timestamp.
 
 Vial numbers and Recipe IDs are resolved from annotations/video5_vial_times_corrected.csv
 using time_base.py.
-Saves the resulting image to the outputs/ directory.
+Saves the resulting image to outputs/card1/vial_fill_examples.png.
 """
 
 from datetime import datetime
@@ -38,7 +38,7 @@ def generate_contact_sheet():
     images_dir = (
         base_dir / "data" / "csi-vial-fill-dataset" / "vial_fill" / "images"
     )
-    output_dir = base_dir / "outputs"
+    output_dir = base_dir / "outputs" / "card1"
     output_file = output_dir / "vial_fill_examples.png"
 
     output_dir.mkdir(parents=True, exist_ok=True)

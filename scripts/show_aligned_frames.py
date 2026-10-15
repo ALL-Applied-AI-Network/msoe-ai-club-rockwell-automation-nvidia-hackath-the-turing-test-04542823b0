@@ -2,8 +2,8 @@
 scripts/show_aligned_frames.py
 Generates a side-by-side visual comparison for vials 1, 7, and 20.
 For each vial, displays frames from vial_fill, tank_level, and cap_seal
-side by side in a 3x3 grid, reading image filenames from outputs/aligned_camera_frames.csv.
-Saves the resulting image to outputs/aligned_check.png.
+side by side in a 3x3 grid, reading image filenames from outputs/card2/aligned_camera_frames.csv.
+Saves the resulting image to outputs/card2/aligned_check.png.
 """
 
 from pathlib import Path
@@ -14,9 +14,10 @@ import pandas as pd
 
 def show_aligned_frames():
     base_dir = Path(__file__).resolve().parent.parent
-    csv_path = base_dir / "outputs" / "aligned_camera_frames.csv"
+    csv_path = base_dir / "outputs" / "card2" / "aligned_camera_frames.csv"
     data_dir = base_dir / "data" / "csi-vial-fill-dataset"
-    output_png = base_dir / "outputs" / "aligned_check.png"
+    mp4_frames_dir = base_dir / "outputs" / "card2" / "aligned_mp4_frames"
+    output_png = base_dir / "outputs" / "card2" / "aligned_check.png"
 
     if not csv_path.exists():
         raise FileNotFoundError(
@@ -48,6 +49,10 @@ def show_aligned_frames():
             ax = axes[row_idx, col_idx]
             filename = row[f"{cam}_filename"]
             img_path = data_dir / cam / "images" / filename
+            if not img_path.exists():
+                mp4_img_path = mp4_frames_dir / filename
+                if mp4_img_path.exists():
+                    img_path = mp4_img_path
 
             if not img_path.exists():
                 ax.text(
