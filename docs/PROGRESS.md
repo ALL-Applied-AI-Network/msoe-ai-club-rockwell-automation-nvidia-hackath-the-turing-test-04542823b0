@@ -121,6 +121,24 @@ The plant's current camera check only asks "is this a color I know?" A green via
 - **Edge detection & safety check:** Detects the inner glass walls across all 30 vials ($x \in [271, 293]$ on left, $[325, 341]$ on right). Every patch is well within the liquid with **0 flagged vials** (no contact with glass walls, meniscus lines, carrier bracket, backdrop dark strip, screws, or glint reflections).
 - **Color conversion:** Patch color is extracted as the spatial median sRGB, then converted to CIELAB (D65) using `colour-science`.
 
+### Card 3, step 2 · Baseline score
+
+**What:** We ran `scripts/baseline_check.py` to calculate CIELAB color distances ($\Delta$E2000 via `colour-science`) for all 30 vials against each recipe's 3rd vial as its clean reference, across the LOW, HIGH, and BASE patches from `scripts/crop_vial.py`.
+
+- **Answer key locking:** The answer key was locked in commit `a4eb011` before any score existed. One human judge (`judge_1`) labeled vials by eye from the judging sheet; `judge_1`'s entries for the 3rd vials are ignored because those vials serve as the references themselves. An AI judge was recorded separately in the `ai_judge` column and was not used for scoring. `judge_2` is currently empty.
+- **Scoring results on the HIGH patch ($\Delta$E > 5):**
+
+| Answer Key | Vials Scored | Positive / Negative | Caught Off-Vials | False Alarms | Balanced Accuracy | Notes |
+| :--- | :---: | :---: | :---: | :---: | :---: | :--- |
+| **Human `judge_1` (unsure = off)** | 16 | 8 Pos / 8 Neg | **8 of 8** (100%) | **0** | **100.0%** | Catches all 8 carryover vials with 0 false alarms. |
+| **Human `judge_1` (unsure = fine)** | 16 | 4 Pos / 12 Neg | **4 of 4** (100%) | **4** | **83.3%** | All 4 false alarms are on vials the judge labeled 'unsure' (V7, V10, V16, V29). |
+| **Advance Rule (1st = at risk, 2nd = fine)** | 16 | 8 Pos / 8 Neg | **7 of 8** (87.5%) | **1** | **87.5%** | Misses vial 13 ($\Delta$E = 1.98, where judge also said matches); 1 false alarm on vial 29 ($\Delta$E = 6.49, judged 'unsure'). |
+
+- **Threshold selection:** Leave-one-recipe-out (LORO) thresholds gave the same picture. Clean 2nd vials measure $\Delta$E 0.5–2.6 and carryover vials measure 6.5–32.7 on the HIGH patch, which is why the pre-decided threshold $\Delta$E > 5 cleanly separates them and $\Delta$E > 2 does not.
+- **Patch comparison & small vial weak spot:** The HIGH patch separates off from fine best because the white backdrop gives clear light transmission and high dynamic range. In contrast, LOW and BASE reach only ~60–70% balanced accuracy due to backdrop shadow absorption and bottom glass refractions. Because 30 mL and 40 mL vials (Recipes 5 and 6) do not reach the HIGH patch, LOW and BASE are the only option for 30/40 mL vials: our main weak spot.
+- **Lingering carryover in pale recipes:** The pale-recipe 2nd vials (vials 5 and 29) stay off ($\Delta$E = 10.0 on LOW for vial 5; $\Delta$E = 6.5 on HIGH for vial 29), consistent with lingering carryover when flushing out dense dyes with dilute recipes.
+- **Limitations:** Only one human judge is available so far; only 16 HIGH-scored vials exist in the dataset (8 of 8 caught is consistent with a true catch rate as low as ~63% at standard confidence intervals); each recipe's 3rd vial is assumed clean.
+
 ### Organizer feedback on our team plan (Oct 14)
 
 **What they said:** our three goals (warn before risky recipe changes, check each filled vial, explain the cause) are the right focus. They asked us to (1) compare plain color/fill measurements with an in-context Cosmos approach **before** training any model, (2) ground explanations in the current and previous recipes and the camera evidence, (3) keep "the twin makes realistic-looking variations" separate from "the twin simulates carryover", since it has no tanks and only approximate liquid color, and (4) instead of requesting data that's already supplied, list which transitions and metadata are still missing. Full text: `docs/organizer-feedback.md`.
@@ -162,12 +180,13 @@ The plant's current camera check only asks "is this a color I know?" A green via
 
 ## What's next
 
-1. **Human answer key:** two teammates fill in `annotations/video5_visual_verdicts.csv` by eye from the judging sheet, separately and without looking at any color numbers.
-2. **Card 3, step 2, baseline score:** ΔE2000 of each 1st and 2nd vial to its recipe's 3rd vial, graded against the answer key, with thresholds fixed in advance (2 and 5) or chosen leave-one-recipe-out.
-3. **Card 3b, in-context Cosmos check:** the same 30 vials and answer key, comparing Cosmos's score with the baseline (organizer feedback).
-4. **Gap list for the organizers:** a table of the 9 recipe changes in video 5 and the transitions/metadata still missing (`docs/organizer-feedback.md`).
-5. **Decide on training:** start Cards 7–8 (twin-trained model) only if steps 2–3 aren't good enough.
-6. **Cosmos playground test:** try vial 7 (green) in the browser with and without recipe info, and paste the answers into `RUNBOOK.md`.
+1. **Human answer key:** one judge so far (`judge_1`); add `judge_2` later and rerun `scripts/baseline_check.py`.
+2. **Card 3, step 2, baseline score:** done (HIGH patch at $\Delta$E > 5 catches carryover vials with $\le 1$ false alarm; small vials remain weak).
+3. **Gap list for the organizers:** a table of the 9 recipe changes in video 5 and the transitions/metadata still missing (`docs/organizer-feedback.md`).
+4. **Card 4, flush advisor:** fit pipe residue volume $V_r$, build the dye-to-color map $g$, and predict risk on any recipe queue.
+5. **Card 3b, in-context Cosmos check:** test Cosmos on the same 30 vials against the baseline once Cosmos is running on Brev (needs Cosmos running on Brev; organizer feedback).
+6. **Decide on training:** start Cards 7–8 (twin-trained model) only if steps 2–5 aren't good enough.
+7. **Cosmos playground test:** try vial 7 (green) in the browser with and without recipe info, and paste the answers into `RUNBOOK.md`.
 
 ## Words used here
 
