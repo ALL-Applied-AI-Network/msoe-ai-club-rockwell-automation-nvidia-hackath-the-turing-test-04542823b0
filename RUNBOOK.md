@@ -115,6 +115,7 @@ All active project outputs are organized into per-card subdirectories under `out
 | `outputs/card3/` | `ai_visual_verdicts.csv` | `scripts/record_ai_verdicts.py` | AI visual color judgments across all 30 vials (`matches`, `off`, `unsure`, or `reference`) evaluated directly from `judging_sheet.png` |
 | `outputs/card3/` | `baseline_results.csv` | `scripts/baseline_check.py` | Complete 30-vial table with CIELAB colors, ΔE2000 per patch (LOW, HIGH, BASE), human judge_1 verdicts, advance rule labels, and fixed/LORO classification flags |
 | `outputs/card3/` | `baseline_chart.png` | `scripts/baseline_check.py` | Publication-grade 3-panel stem plot showing ΔE2000 for all 1st and 2nd vials per patch, with ΔE=2.0 and ΔE=5.0 threshold lines |
+| `annotations/` | `video5_transitions.csv` | `scripts/list_transitions.py` | 9-row recipe transition table with volumes, dye shares, dye categories, strength/hue labels, first-vial ΔE, patch, and judge_1 verdict |
 
 ---
 
@@ -250,6 +251,18 @@ First time only, install the packages: `pip install -r requirements.txt`
 - **Generated output:**
   - `outputs/card3/baseline_results.csv` (complete 30-vial table with measurements, ΔE per patch, verdicts, rule labels, and classification flags)
   - `outputs/card3/baseline_chart.png` (3-panel stem chart displaying ΔE2000 for all 1st and 2nd vials per patch against ΔE=2.0 and ΔE=5.0 threshold lines)
+
+---
+
+### Script: `scripts/list_transitions.py` (Transitions Table & Gap Analysis)
+- **Purpose:** Builds the 9-row recipe transitions table for Video 5 (`annotations/video5_transitions.csv`), analyzing every recipe change by volume, dye shares, dye category (`orange`, `blue`, `mixed`, `clear`), strength (`pale` vs `dark`), and hue (`orange-side`, `blue-side`, `balanced`, `clear`). Merges first-vial baseline ΔE2000 (HIGH patch if valid, else LOW) and `judge_1` verdict. Analyzes seen vs never-seen transitions across dye label, strength, and hue views.
+- **Run command:**
+  ```powershell
+  python scripts/list_transitions.py
+  ```
+- **Generated output:**
+  - `annotations/video5_transitions.csv` (complete 9-row transitions table with volumes, shares, labels, first-vial ΔE, patch, and `judge_1` verdict)
+  - Console output: narrow 9-row table fitting terminal width, plus full breakdown of seen-multiple, seen-once, and never-seen transitions across dye label, strength, and hue views.
 
 ---
 

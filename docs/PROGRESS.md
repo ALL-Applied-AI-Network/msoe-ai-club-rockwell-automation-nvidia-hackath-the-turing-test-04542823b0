@@ -149,6 +149,13 @@ The plant's current camera check only asks "is this a color I know?" A green via
 - **The twin is for appearance, not carryover.** Renders can vary lighting, glare, fill height and color, which helps a model cope with real-world variety. But carryover happens in pipes and tanks the twin doesn't model, so its strength comes only from the real recipe changes in video 5.
 - **Data gap list instead of a data request.** Video 5 has exactly 9 recipe changes, each seen once. We'll list which risky changes never occur (e.g. blue → orange) and which metadata is missing (the recipe before vial 1, recipe sequences for videos 1–4, tank contents, Teledyne results), and send that list to the organizers.
 
+### Transitions gap list (Oct 19)
+
+**What we built:** `scripts/list_transitions.py` and `annotations/video5_transitions.csv`, analyzing all 9 recipe transitions in Video 5 by volume, dye shares, dye category (`orange`, `blue`, `mixed`, `clear`), strength (`pale` vs `dark`), and hue (`orange-side`, `blue-side`, `balanced`, `clear`), paired with baseline first-vial $\Delta$E and `judge_1` verdicts.
+
+- **Main gap in one sentence:** Video 5 runs in a single direction and never tests carryover into a pale recipe from a blue-side recipe (the expected worst case for color distortion), never tests pure blue into pure orange, and includes no transitions into or out of a clear-only recipe to verify flush effectiveness.
+- **The open question (12→13 vs 8→9):** Transition 12→13 kept the same hue family and was still clearly off ($\Delta$E = 10.4, judged off), while 8→9 (balanced to balanced, darker) was the only first vial that looked clean ($\Delta$E = 2.0, judged matches). With only a single example of each same-hue change, we cannot tell whether 8→9 escaped carryover because of recipient volume, saturation, or station variance; more same-hue changes would tell us.
+
 ### Cosmos groundwork (Oct 13)
 
 
@@ -182,7 +189,7 @@ The plant's current camera check only asks "is this a color I know?" A green via
 
 1. **Human answer key:** one judge so far (`judge_1`); add `judge_2` later and rerun `scripts/baseline_check.py`.
 2. **Card 3, step 2, baseline score:** done (HIGH patch at $\Delta$E > 5 catches carryover vials with $\le 1$ false alarm; small vials remain weak).
-3. **Gap list for the organizers:** a table of the 9 recipe changes in video 5 and the transitions/metadata still missing (`docs/organizer-feedback.md`).
+3. **Gap list for the organizers:** done (table in `annotations/video5_transitions.csv` and gap list in `docs/organizer-feedback.md`).
 4. **Card 4, flush advisor:** fit pipe residue volume $V_r$, build the dye-to-color map $g$, and predict risk on any recipe queue.
 5. **Card 3b, in-context Cosmos check:** test Cosmos on the same 30 vials against the baseline once Cosmos is running on Brev (needs Cosmos running on Brev; organizer feedback).
 6. **Decide on training:** start Cards 7–8 (twin-trained model) only if steps 2–5 aren't good enough.

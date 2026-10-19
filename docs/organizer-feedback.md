@@ -42,12 +42,19 @@ Received after we submitted the team plan (Oct 14, 2026). The feedback is copied
 - The mp4 files play 1.2158× faster than real time (camera ~24.68 fps, files say 30 fps). Label `start_s`/`end_s` are mp4 seconds, while still-image timestamps and `video_s` in `video5_frame_labels.csv` are real time, so the frame labels put stills under the wrong vials. Conversion: real_s = 1.215771 × mp4_s (see `scripts/time_base.py`).
 - The still images stop at 20:15:27, so vials 26–30 exist only in the mp4s.
 
-**Still missing (to confirm and list precisely):**
-1. **Transitions not covered.** Video 5 has exactly 9 recipe changes (5→6, 6→7, …, 13→14), each seen once, all in one direction. A table of which color changes these are (e.g. orange → blue) will show which risky ones never occur, such as blue → orange, dark → pale and clear-heavy → dark, plus any repeat of the same change.
+**Still missing:**
+1. **Transitions not covered.** Video 5 has 9 recipe changes (5→6 … 13→14), each seen once (table: `annotations/video5_transitions.csv`, built by `scripts/list_transitions.py`). We label each recipe by hue (orange-side, blue-side, balanced, clear) and strength (pale if dye is under half the volume, else dark).
+   - **Never seen, highest priority:**
+     - Any change *into* a pale recipe from a blue-side recipe. The three pale recipes (6, 10, 14) are all reached from balanced or orange-side recipes. Blue leftover in a pale orange recipe is the expected worst case, and there is no example of it.
+     - Pure blue → pure orange (only orange → blue occurs, 6→7).
+     - Pale → pale changes of any kind.
+   - **Seen only once, so we can't tell whether the carryover repeats:** blue-side → orange-side (11→12, ΔE 28.3), balanced → blue-side (10→11, ΔE 10.7), blue-side → balanced (7→8, ΔE 11.2), balanced → orange-side (5→6, ΔE 23.2, measured on the less reliable LOW patch) and orange-side → orange-side (12→13, ΔE 10.4). Orange-side → blue-side was seen twice (6→7 and 13→14, ΔE 25.6 and 32.7).
+   - **Never seen: changes into or out of a clear-only recipe**, which would show whether a clear flush works (Card 4).
+   - **Open question:** 12→13 kept the same hue family and was still clearly off (ΔE 10.4, judged off), while 8→9 (balanced → balanced, darker) was the only first vial that looked clean (ΔE 2.0). With one example of each we can't say why; more same-hue changes would tell us.
 2. **The recipe before vial 1**, so vial 1 can be judged (it differs from vials 2–3).
 3. **Recipe sequences for videos 1–4** (recipe ID per vial), which would add labeled vials and transitions.
 4. **Tank contents per video** and whether the tanks hold dissolved dyes or pigments (affects the nozzle-buildup hypothesis and the tank reader).
 5. **Flush events and long idle times**, if any happened during the recordings.
 6. **The Teledyne check's pass/fail result per vial**, which would give an independent answer key for scoring.
 
-**Next step:** build the transitions table from `video5_vial_recipes.csv` (previous recipe → next recipe, tank volumes of each, dominant dye before and after), confirm the list above, and have the captain post it to the organizers.
+**Next step:** have the captain post this gap list to the organizers.
