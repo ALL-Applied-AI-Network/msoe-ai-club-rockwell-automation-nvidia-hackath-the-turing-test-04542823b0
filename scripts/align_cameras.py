@@ -8,8 +8,8 @@ For each of the 30 labeled vials:
 2. For vials 1–24: matches the nearest captured still image across all 3 cameras (all within < 1.0 s).
 3. For vials 25–30 (where still camera stopped saving after 20:15:27): extracts the exact frame
    from each camera's Video 5 MP4 file (all within < 0.04 s).
-4. Saves extracted MP4 frames to outputs/aligned_mp4_frames/.
-5. Adds a 'source' column ('still' or 'mp4') and saves the aligned table to outputs/aligned_camera_frames.csv.
+4. Saves extracted MP4 frames to outputs/card2/aligned_mp4_frames/.
+5. Adds a 'source' column ('still' or 'mp4') and saves the aligned table to outputs/card2/aligned_camera_frames.csv.
 """
 
 from datetime import datetime
@@ -67,7 +67,7 @@ def align_cameras():
     recipes_file = (
         dataset_dir / "vial_fill" / "labels" / "video5_vial_recipes.csv"
     )
-    output_dir = base_dir / "outputs"
+    output_dir = base_dir / "outputs" / "card2"
     output_csv = output_dir / "aligned_camera_frames.csv"
     mp4_frames_dir = output_dir / "aligned_mp4_frames"
 

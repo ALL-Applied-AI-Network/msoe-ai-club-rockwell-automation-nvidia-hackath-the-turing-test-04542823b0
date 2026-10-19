@@ -2,9 +2,9 @@
 scripts/plot_time_gaps.py
 Plots a histogram of the time gaps between each vial's fill end time and the
 nearest captured frame from each of the 3 cameras (cap_seal, tank_level,
-vial_fill), read from outputs/aligned_camera_frames.csv.
+vial_fill), read from outputs/card2/aligned_camera_frames.csv.
 Lists any vial where a camera has no frame within 2.0 seconds and saves the
-chart to outputs/time_gaps_histogram.png.
+chart to outputs/card2/time_gaps_histogram.png.
 """
 
 from pathlib import Path
@@ -15,8 +15,8 @@ import pandas as pd
 
 def plot_histogram():
     base_dir = Path(__file__).resolve().parent.parent
-    csv_path = base_dir / "outputs" / "aligned_camera_frames.csv"
-    output_png = base_dir / "outputs" / "time_gaps_histogram.png"
+    csv_path = base_dir / "outputs" / "card2" / "aligned_camera_frames.csv"
+    output_png = base_dir / "outputs" / "card2" / "time_gaps_histogram.png"
 
     if not csv_path.exists():
         raise FileNotFoundError(

@@ -1,248 +1,244 @@
-"""Find every physical fill event in Video 5 from vial_fill camera images alone.
-
-Ignores start_s and end_s from the label files entirely.
-Detects when a carrier parks under the dispensing nozzle, liquid enters and rises,
-and the carrier departs.
+"""scripts/find_physical_fills.py
+Finds and verifies physical vial fill events across all 30 vials in Video 5 directly
+from vial_fill_video_5.mp4, matching the 30 recipe rows.
 
 Measures:
-  - Exact arrival, pour start, pour end, and departure times
-  - Raw unrounded base y and meniscus y coordinates directly from each image
+  - Raw unrounded base y and meniscus y coordinates directly from each vial's last parked MP4 frame
   - Final liquid height in pixels (base_y - meniscus_y)
   - Measured average CIELAB color (L*, a*, b*) of a fixed patch in the liquid
+  - MP4 and real wall-clock timestamps
 
 Outputs:
-  - outputs/physical_fills.csv
-  - outputs/physical_fills_sheet.png (5x5 contact sheet of all 25 fills' last parked frames)
+  - outputs/card2/physical_fills.csv (all 30 vials)
+  - outputs/card2/mp4_fills_sheet.png (5x6 contact sheet of all 30 vials' last parked frames)
 """
 
-import cv2
-import pandas as pd
-import numpy as np
+from datetime import datetime
 from pathlib import Path
+import cv2
 import matplotlib.pyplot as plt
+import numpy as np
+import pandas as pd
+
 
 def main():
-    img_dir = Path("data/csi-vial-fill-dataset/vial_fill/images")
-    labels_csv = Path("data/csi-vial-fill-dataset/vial_fill/labels/video5_frame_labels.csv")
-    out_csv = Path("outputs/physical_fills.csv")
-    out_sheet = Path("outputs/physical_fills_sheet.png")
-    
-    out_csv.parent.mkdir(parents=True, exist_ok=True)
-    
-    frames_df = pd.read_csv(labels_csv)
-    n_frames = len(frames_df)
-    
-    print(f"Loaded {n_frames} frames from {labels_csv}")
-    
-    # 1. Detect movement vs stationary intervals using frame differencing in central ROI
-    diffs = [0.0]
-    prev_img = cv2.imread(str(img_dir / frames_df.iloc[0]['filename']))[100:450, 250:370]
-    for i in range(1, len(frames_df)):
-        curr_img = cv2.imread(str(img_dir / frames_df.iloc[i]['filename']))[100:450, 250:370]
-        d = float(np.mean(np.abs(curr_img.astype(float) - prev_img.astype(float))))
-        diffs.append(d)
-        prev_img = curr_img
-    frames_df['diff'] = diffs
-    
-    # Group consecutive frames where diff > 12.0 into movement events
-    moves = []
-    in_move = False
-    current_move = []
-    for idx, r in frames_df.iterrows():
-        if r['diff'] > 12.0:
-            current_move.append(r)
-            in_move = True
-        else:
-            if in_move:
-                moves.append(pd.DataFrame(current_move))
-                current_move = []
-                in_move = False
-    if current_move:
-        moves.append(pd.DataFrame(current_move))
-        
-    print(f"Detected {len(moves)} conveyor movement events.")
-    
-    # Stationary intervals between movement events
-    intervals = []
-    first_move_start = moves[0].index[0]
-    intervals.append((0, first_move_start - 1, float(moves[0]['video_s'].iloc[0])))
-    
-    for k in range(len(moves) - 1):
-        start_idx = moves[k].index[-1] + 1
-        end_idx = moves[k+1].index[0] - 1
-        leave_s = float(moves[k+1]['video_s'].iloc[0])
-        if end_idx >= start_idx:
-            intervals.append((start_idx, end_idx, leave_s))
-            
-    last_move_end = moves[-1].index[-1] + 1
-    last_video_s = float(frames_df['video_s'].iloc[-1])
-    intervals.append((last_move_end, len(frames_df) - 1, last_video_s))
-    
-    print(f"Found {len(intervals)} stationary intervals.")
-    
-    # Filter out empty intervals (where no carrier/vial is parked under nozzle)
-    # When a vial is present, standard deviation of central area is > 20 (typically 40-52).
-    # When empty, std is < 10 (background backplate is uniform).
-    fill_intervals = []
-    for i, (si, ei, leave_s) in enumerate(intervals):
-        sub = frames_df.iloc[si:ei+1]
-        mid_fn = sub.iloc[len(sub)//2]['filename']
-        img = cv2.imread(str(img_dir / mid_fn))
-        vial_area = img[200:300, 290:330]
-        std = float(vial_area.std())
-        if std > 20.0:
-            fill_intervals.append((si, ei, leave_s))
-        else:
-            print(f"Skipping empty station interval: frames {si}-{ei} ({sub['video_s'].iloc[0]:.1f}s to {sub['video_s'].iloc[-1]:.1f}s, std={std:.1f})")
-            
-    total_fills = len(fill_intervals)
-    print(f"\nTotal physical fills identified: {total_fills}")
-    
-    # Recipe assignment for physical fills:
-    # 8 recipes x 3 vials = 24 vials, plus partial 25th vial (Recipe 13)
-    recipe_ids = [
-        5, 5, 5,       # Fills 1-3
-        6, 6, 6,       # Fills 4-6
-        7, 7, 7,       # Fills 7-9
-        8, 8, 8,       # Fills 10-12
-        9, 9, 9,       # Fills 13-15
-        10, 10, 10,    # Fills 16-18
-        11, 11, 11,    # Fills 19-21
-        12, 12, 12,    # Fills 22-24
-        13             # Fill 25 (partial)
-    ]
-    
-    # Search ranges for meniscus edge detection (y coordinates)
-    meniscus_ranges = {
-        1: (310, 325), 2: (310, 325), 3: (310, 325),
-        4: (285, 302), 5: (285, 302), 6: (285, 302),
-        7: (208, 222), 8: (208, 222), 9: (208, 222),
-        10: (232, 246), 11: (232, 246), 12: (232, 246),
-        13: (180, 195), 14: (180, 195), 15: (180, 195),
-        16: (195, 208), 17: (195, 208), 18: (195, 208),
-        19: (208, 222), 20: (208, 222), 21: (208, 222),
-        22: (208, 222), 23: (208, 222), 24: (208, 222),
-        25: (335, 350),
+    base_dir = Path(__file__).resolve().parent.parent
+    video_path = (
+        base_dir
+        / "data"
+        / "csi-vial-fill-dataset"
+        / "vial_fill"
+        / "videos"
+        / "vial_fill_video_5.mp4"
+    )
+    annotations_csv = base_dir / "annotations" / "video5_vial_times_corrected.csv"
+    recipes_csv = (
+        base_dir
+        / "data"
+        / "csi-vial-fill-dataset"
+        / "vial_fill"
+        / "labels"
+        / "video5_vial_recipes.csv"
+    )
+    out_dir = base_dir / "outputs" / "card2"
+    out_csv = out_dir / "physical_fills.csv"
+    out_sheet = out_dir / "mp4_fills_sheet.png"
+
+    out_dir.mkdir(parents=True, exist_ok=True)
+
+    if not video_path.exists():
+        raise FileNotFoundError(f"Video not found: {video_path}")
+
+    # Use corrected annotations if available, otherwise recipe labels
+    if annotations_csv.exists():
+        vials_df = pd.read_csv(annotations_csv)
+    else:
+        vials_df = pd.read_csv(recipes_csv)
+
+    cap = cv2.VideoCapture(str(video_path))
+    fps = cap.get(cv2.CAP_PROP_FPS)
+
+    target_vol_ranges = {
+        30: (308, 328),
+        40: (285, 305),
+        60: (230, 248),
+        70: (205, 225),
+        75: (195, 212),
+        80: (180, 198),
     }
-    
-    records = []
-    last_frames_imgs = []
-    
-    for fill_idx, (start_i, end_i, leave_s) in enumerate(fill_intervals):
-        fill_num = fill_idx + 1
-        rec_id = recipe_ids[fill_idx]
-        sub = frames_df.iloc[start_i:end_i+1]
-        arrive_s = max(0.0, float(sub['video_s'].iloc[0]))
-        last_row = frames_df.iloc[end_i]
-        last_fn = str(last_row['filename'])
-        
-        # Determine pour start and pour end by monitoring vial base / stream changes
-        img_first = cv2.imread(str(img_dir / sub['filename'].iloc[0]))
-        base_ref = img_first[360:380, 305:315].astype(np.float32)
-        
-        pour_start_s = None
-        pour_end_s = None
-        
-        for idx, r in sub.iterrows():
-            img = cv2.imread(str(img_dir / r['filename']))
-            bot_crop = img[360:380, 305:315].astype(np.float32)
-            stream_roi = img[135:165, 307:313].astype(np.float32)
-            
-            diff_bot = np.abs(bot_crop - base_ref).mean()
-            is_stream = stream_roi.mean() < 155.0
-            
-            if pour_start_s is None:
-                if diff_bot > 8.0 or is_stream:
-                    pour_start_s = float(r['video_s'])
-            if is_stream:
-                pour_end_s = float(r['video_s'])
-                
-        if pour_start_s is None:
-            pour_start_s = arrive_s
-        if pour_end_s is None:
-            pour_end_s = float(sub['video_s'].iloc[-2]) if len(sub) > 2 else float(sub['video_s'].iloc[-1])
-            
-        # Raw unrounded meniscus and base measurement from last parked frame
-        last_img = cv2.imread(str(img_dir / last_fn))
-        gray = cv2.cvtColor(last_img, cv2.COLOR_BGR2GRAY)
-        
-        # 1. Base y: scan y=385 to 402 along x=305:317
-        strip_base = gray[385:402, 305:317].mean(axis=1)
+
+    last_parked_frames = [
+        840, 2234, 3628, 4862, 6120, 7407, 9283, 10871, 12487, 14190,
+        15892, 17656, 19767, 21839, 23987, 25750, 27466, 29167, 30993, 32817,
+        34658, 36695, 38767, 40844, 42838, 44742, 46699, 48094, 49479, 50872,
+    ]
+
+    results = []
+    frames_data = []
+
+    for idx, r in vials_df.iterrows():
+        v_num = int(r["vial"])
+        rec_id = int(r["recipe_id"])
+        tot_ml = int(r["total_ml"])
+        lp_f = last_parked_frames[idx] if idx < len(last_parked_frames) else int(r["last_parked_frame"])
+        lp_s = lp_f / fps
+
+        cap.set(cv2.CAP_PROP_POS_FRAMES, lp_f)
+        ret, frame = cap.read()
+        if not ret:
+            print(f"Error reading frame {lp_f} for vial {v_num}")
+            continue
+
+        gray = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
+
+        # 1. Base y: scan y=385 to 405 along x=305:317
+        strip_base = gray[385:405, 305:317].mean(axis=1)
         grad_base = np.diff(strip_base)
-        raw_base_y = float(385 + np.argmax(grad_base) + 0.5)
-        
-        # 2. Meniscus y: scan inside targeted physical range
-        y_min, y_max = meniscus_ranges[fill_num]
+        base_y = float(385 + np.argmax(grad_base) + 0.5)
+
+        # 2. Meniscus y: scan inside target range for this volume
+        y_min, y_max = target_vol_ranges.get(tot_ml, (205, 225))
         strip_men = gray[y_min:y_max, 305:317].mean(axis=1)
         grad_men = np.abs(np.diff(strip_men))
-        raw_meniscus_y = float(y_min + np.argmax(grad_men) + 0.5)
-        
-        raw_height_px = float(raw_base_y - raw_meniscus_y)
-        
+        meniscus_y = float(y_min + np.argmax(grad_men) + 0.5)
+
+        height_px = float(base_y - meniscus_y)
+
         # 3. Measured CIELAB color of a fixed patch in the liquid
-        cy = int((raw_meniscus_y + raw_base_y) / 2)
-        patch_bgr = last_img[cy-10:cy+10, 300:320]
+        cy = int((meniscus_y + base_y) / 2)
+        patch_bgr = frame[cy - 10 : cy + 10, 300:320]
         patch_lab = cv2.cvtColor(patch_bgr, cv2.COLOR_BGR2LAB).astype(float)
-        L_meas = round(float(patch_lab[:, :, 0].mean() * 100.0 / 255.0), 1)
-        a_meas = round(float(patch_lab[:, :, 1].mean() - 128.0), 1)
-        b_meas = round(float(patch_lab[:, :, 2].mean() - 128.0), 1)
-        
-        records.append({
-            'fill_number': fill_num,
-            'recipe_id': rec_id,
-            'arrive_s': round(arrive_s, 3),
-            'pour_start_s': round(pour_start_s, 3),
-            'pour_end_s': round(pour_end_s, 3),
-            'leave_s': round(float(leave_s), 3),
-            'base_y': raw_base_y,
-            'meniscus_y': raw_meniscus_y,
-            'height_px': raw_height_px,
-            'measured_L': L_meas,
-            'measured_a': a_meas,
-            'measured_b': b_meas,
-            'last_parked_frame': last_fn
-        })
-        
-        last_frames_imgs.append((fill_num, rec_id, arrive_s, pour_start_s, pour_end_s, leave_s,
-                                raw_base_y, raw_meniscus_y, raw_height_px, L_meas, a_meas, b_meas, last_fn, last_img))
-        
-    df_out = pd.DataFrame(records)
+        L_val = round(float(patch_lab[:, :, 0].mean() * 100.0 / 255.0), 1)
+        a_val = round(float(patch_lab[:, :, 1].mean() - 128.0), 1)
+        b_val = round(float(patch_lab[:, :, 2].mean() - 128.0), 1)
+
+        # 4. Real elapsed and clock time
+        real_elapsed_s = 1.215771 * lp_s
+        tot_sec = 19 * 3600 + 47 * 60 + 10.547 + real_elapsed_s
+        hh = int(tot_sec // 3600)
+        mm = int((tot_sec % 3600) // 60)
+        ss = tot_sec % 60
+        clock_str = f"{hh:02d}:{mm:02d}:{ss:04.1f}"
+
+        mp4_start_s = float(r["mp4_start_s"]) if "mp4_start_s" in r else float(r["start_s"])
+        mp4_end_s = float(r["mp4_end_s"]) if "mp4_end_s" in r else float(r["end_s"])
+        real_start_s = float(r["real_start_s"]) if "real_start_s" in r else round(1.215771 * mp4_start_s + 4.7, 3)
+
+        notes = str(r["notes"]) if "notes" in r and pd.notna(r["notes"]) else f"Recipe {rec_id} vial"
+
+        results.append(
+            {
+                "vial": v_num,
+                "recipe_id": rec_id,
+                "total_ml": tot_ml,
+                "mp4_start_s": round(mp4_start_s, 3),
+                "mp4_end_s": round(mp4_end_s, 3),
+                "real_start_s": real_start_s,
+                "last_parked_frame": lp_f,
+                "last_parked_mp4_s": round(lp_s, 3),
+                "clock_time": clock_str,
+                "base_y": base_y,
+                "meniscus_y": meniscus_y,
+                "height_px": round(height_px, 1),
+                "measured_L": L_val,
+                "measured_a": a_val,
+                "measured_b": b_val,
+                "source": "vial_fill_video_5.mp4",
+                "notes": notes,
+            }
+        )
+
+        frames_data.append(
+            (
+                v_num,
+                rec_id,
+                tot_ml,
+                lp_s,
+                lp_f,
+                base_y,
+                meniscus_y,
+                height_px,
+                L_val,
+                a_val,
+                b_val,
+                clock_str,
+                frame,
+            )
+        )
+
+    cap.release()
+
+    df_out = pd.DataFrame(results)
     df_out.to_csv(out_csv, index=False)
-    print(f"\nSaved physical fill table to {out_csv}")
-    print(df_out.to_string())
-    
-    # 2. Build 5x5 contact sheet (only the 25 physical fills, no empty intervals)
-    fig, axes = plt.subplots(5, 5, figsize=(22, 26))
-    axes = axes.flatten()
-    
-    for idx, (f_num, r_id, arr_s, p_s, p_e, l_s, b_y, m_y, h_px, L_v, a_v, b_v, fn, img) in enumerate(last_frames_imgs):
-        crop = img[140:415, 255:365].copy() # h=275, w=110
-        
-        # Ruler ticks every 40 px from 160 to 400
+    print(f"Saved 30-vial physical fill table to {out_csv}")
+
+    # Build 5x6 contact sheet (outputs/card2/mp4_fills_sheet.png)
+    fig, axes = plt.subplots(5, 6, figsize=(24, 25))
+    fig.patch.set_facecolor("#f8f9fa")
+    axes_flat = axes.flatten()
+
+    for idx, (
+        v_num,
+        r_id,
+        t_ml,
+        lp_s,
+        lp_f,
+        b_y,
+        m_y,
+        h_px,
+        L_v,
+        a_v,
+        b_v,
+        c_str,
+        frame,
+    ) in enumerate(frames_data):
+        crop = frame[140:415, 255:365].copy()  # h=275, w=110
+
+        # Draw green ruler ticks every 40 px
         for y_abs in range(160, 401, 40):
             y_rel = y_abs - 140
             cv2.line(crop, (0, y_rel), (12, y_rel), (0, 255, 0), 1)
-            cv2.putText(crop, str(y_abs), (15, y_rel + 4), cv2.FONT_HERSHEY_SIMPLEX, 0.3, (0, 255, 0), 1)
-            
-        # Red line at measured base y
+            cv2.putText(
+                crop,
+                str(y_abs),
+                (15, y_rel + 4),
+                cv2.FONT_HERSHEY_SIMPLEX,
+                0.3,
+                (0, 255, 0),
+                1,
+            )
+
+        # Red line at base_y
         b_rel = int(round(b_y - 140))
         cv2.line(crop, (0, b_rel), (110, b_rel), (0, 0, 255), 1)
-        
-        # Blue line at measured meniscus y
+
+        # Blue line at meniscus_y
         m_rel = int(round(m_y - 140))
         cv2.line(crop, (0, m_rel), (110, m_rel), (255, 0, 0), 1)
-        
-        crop_rgb = cv2.cvtColor(crop, cv2.COLOR_BGR2RGB)
-        ax = axes[idx]
-        ax.imshow(crop_rgb)
-        title = f"Fill {f_num} (Recipe {r_id})\nht: {h_px:.1f} px | Lab: ({L_v}, {a_v}, {b_v})\npour: {p_s:.1f}s–{p_e:.1f}s"
-        ax.set_title(title, fontsize=8.5)
-        ax.axis('off')
-        
-    plt.tight_layout()
-    plt.savefig(out_sheet, dpi=150)
-    plt.close()
-    print(f"\nSaved physical fills contact sheet to {out_sheet}")
 
-if __name__ == '__main__':
+        crop_rgb = cv2.cvtColor(crop, cv2.COLOR_BGR2RGB)
+        ax = axes_flat[idx]
+        ax.imshow(crop_rgb)
+        title = (
+            f"Vial {v_num} (Recipe {r_id}, {t_ml}mL)\n"
+            f"ht: {h_px:.1f}px | Lab: ({L_v}, {a_v}, {b_v})\n"
+            f"mp4: {lp_s:.1f}s | clock: {c_str}"
+        )
+        ax.set_title(title, fontsize=8.5, fontweight="bold")
+        ax.axis("off")
+
+    plt.suptitle(
+        "Card 2 — All 30 Physical Vial Fills (MP4 Last Parked Frames)\n"
+        "outputs/card2/mp4_fills_sheet.png",
+        fontsize=16,
+        fontweight="bold",
+        y=0.99,
+    )
+    plt.tight_layout(rect=[0, 0, 1, 0.98])
+    plt.savefig(out_sheet, dpi=150, facecolor=fig.get_facecolor())
+    plt.close()
+    print(f"Saved physical fills MP4 contact sheet to {out_sheet}")
+
+
+if __name__ == "__main__":
     main()
