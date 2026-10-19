@@ -118,6 +118,13 @@ All active project outputs are organized into per-card subdirectories under `out
 | `annotations/` | `video5_transitions.csv` | `scripts/list_transitions.py` | 9-row recipe transition table with volumes, dye shares, dye categories, strength/hue labels, first-vial ΔE, patch, and judge_1 verdict |
 | `outputs/card4/` | `color_map.json` | `scripts/fit_color_map.py` | Fitted Beer–Lambert absorbance parameters (9 coefficients) and LORO cross-validation errors across Recipes 7–14 |
 | `outputs/card4/` | `color_map_check.png` | `scripts/fit_color_map.py` | 4×2 comparison grid showing real clean 3rd-vial color squares vs LORO predicted squares with ΔE2000 labels |
+| `outputs/card4/` | `residue_fit.csv` | `scripts/fit_residue.py` | Residue volume fitting results across 7 tall transitions with individual and LOTO $V_r$ and prediction errors |
+| `outputs/card4/` | `residue_check.png` | `scripts/fit_residue.py` | Visual grid comparing real 1st vial swatches vs $V_r$ modeled blends across 7 tall transitions |
+| `outputs/card4/` | `backdrop_measurements.csv` | `scripts/check_measurements.py` | Exposure stability measurements of white paper backdrop across all 30 vials |
+| `outputs/card4/` | `backdrop_patch_grid.png` | `scripts/check_measurements.py` | 5×6 grid verifying placement of HIGH and BACKDROP patches clear of glass and bracket |
+| `outputs/card4/` | `measurement_check.csv` | `scripts/check_measurements.py` | Lightness and absorbance bounding sanity checks across the 7 tall transitions |
+| `outputs/card4/` | `mixing_check.png` | `scripts/check_measurements.py` | $a^*$ vs $b^*$ color plane plots comparing first vial against mixing line between clean endpoints |
+| `outputs/card4/` | `first_vial_strips.png` | `scripts/check_measurements.py` | Side-by-side 3-vial crops (previous 3rd, first, next 3rd) across all 9 transitions showing visual layering |
 
 ---
 
@@ -279,6 +286,38 @@ First time only, install the packages: `pip install -r requirements.txt`
   - `outputs/card4/color_map_check.png` (side-by-side real vs predicted color square swatches labeled with ΔE2000)
 
 ---
+
+### Script: `scripts/fit_residue.py` (Card 4 Step 2: Physical Residue Volume Fitting)
+- **Purpose:** Attempts to fit a single leftover residue volume $V_r$ (0.0 to 40.0 mL) of the previous recipe mixing into the next recipe via optical absorbance blending across the 7 tall transitions (Recipes 7→8 through 13→14, HIGH patch). Evaluates individual transition fits and honest leave-one-transition-out (LOTO) cross-validation.
+- **Run command:**
+  ```powershell
+  python scripts/fit_residue.py
+  ```
+- **Generated output:**
+  - `outputs/card4/residue_fit.csv` (per-transition best $V_r$, LOTO $V_r$, and predicted $\Delta$E2000 errors)
+  - `outputs/card4/residue_check.png` (visual grid showing real 1st vial colors vs $V_r$ modeled colors)
+
+---
+
+### Script: `scripts/check_measurements.py` (Card 4 Step 2: Camera Stability & Physical Mixing Sanity Checks)
+- **Purpose:** Performs sanity checks on color measurements from Video 5:
+  1. **Exposure stability:** Measures $L^*$ of a fixed BACKDROP patch on the white paper backdrop at HIGH patch height ($y: 268\text{--}288, x: 200\text{--}216$) across all 30 vials to verify illumination stability.
+  2. **In-between / bounding check:** Compares $L^*$ and per-channel absorbance $A = -\log_{10}(\text{linear RGB})$ of previous clean 3rd vial, first vial, and next clean 3rd vial across the 7 tall transitions.
+  3. **Color-plane trajectory:** Plots $a^*$ vs $b^*$ mixing trajectories.
+  4. **Visual crop strips:** Extracts 3-vial side-by-side crop strips for all 9 transitions to inspect visual layering/stratification.
+- **Run command:**
+  ```powershell
+  python scripts/check_measurements.py
+  ```
+- **Generated output:**
+  - `outputs/card4/backdrop_measurements.csv` (white paper backdrop $L^*$ across all 30 vials)
+  - `outputs/card4/backdrop_patch_grid.png` (5×6 contact grid verifying placement of HIGH and BACKDROP patches)
+  - `outputs/card4/measurement_check.csv` (bounding check table for $L^*$ and absorbance channels)
+  - `outputs/card4/mixing_check.png` ($a^*$ vs $b^*$ color plane plots with mixing lines)
+  - `outputs/card4/first_vial_strips.png` (side-by-side crops for visual inspection of layering)
+
+---
+
 
 ## 3. Cosmos Reason (Cosmos 3 Nano Reasoner)
 

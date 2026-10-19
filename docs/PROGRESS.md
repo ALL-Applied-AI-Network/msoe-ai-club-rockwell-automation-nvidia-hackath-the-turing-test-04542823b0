@@ -164,7 +164,18 @@ The plant's current camera check only asks "is this a color I know?" A green via
 - **Why it misses:** It fails worst when it must extrapolate—specifically Recipes 7 ($\Delta$E 11.1) and 14 ($\Delta$E 21.3), which are the only pure-blue recipes in the tall set, while there is no pure-orange tall recipe available. Furthermore, two fitted coefficients are negative (e.g. $k_{\text{orange}, R} = -0.63$ and $k_{\text{blue}, B} = -0.44$), which pure physical light absorption does not allow. This shows that the camera system is not behaving as a pure transmission sensor, likely influenced by its dark floor and automatic exposure.
 - **Decision:** For known recipes where clean reference vials have been measured, use their actual measured patch colors directly rather than predicting them via $g$. Reserve $g$ only for predicting brand-new, unseen recipes in a queue, and explicitly display its expected uncertainty.
 
+### Card 4, step 2 · Why a simple leftover model didn't fit (Oct 19)
+
+**What we did:** In `scripts/fit_residue.py` and `scripts/check_measurements.py`, we attempted to fit a physical residue volume $V_r$ (leftover liquid in the shared pipe blending into the recipient vial) using measured clean 3rd-vial colors and absorbance mixing across the 7 tall transitions (7→8 through 13→14, HIGH patch), and sanity-checked our camera measurements.
+
+- **Exposure is stable:** Measuring a white paper backdrop patch across all 30 frames confirmed $L^*$ is strictly between 61.0 and 62.7 (spread 1.71, 0 outliers $> 2$ from median 61.9), proving our color measurements are not artifacts of camera drift or auto-exposure swings.
+- **The one-number leftover model failed:** The model assumes the first vial equals the new recipe plus a fixed volume $V_r$ of the previous recipe. Under optimization, the best $V_r$ hit the 40.0 mL search ceiling in 5 of 7 transitions (and 37.9 mL in a 6th), and 3 transitions still missed by $\Delta$E > 10. In transitions 9→10, 10→11, and 13→14, the first vial's lightness $L^*$ is within $\approx 1$ of the previous recipe's color, which cannot physically occur from a small pipe residue volume.
+- **Subtractive dye absorption vs "darker than both":** In subtractive mixing, orange and blue dyes absorb complementary spectra, so a blend naturally darkens compared to single-dye components. Transitions 9→10, 12→13, and 13→14 show minor lightness dips ($\le 1.4\ L^*$), well within sensor and measurement noise. Transition 11→12 (5 $L^*$ darker) is a blue-side $\to$ orange-side shift where significant darkening is physically expected.
+- **Unmixed / layered appearance on camera:** Crop strips (`outputs/card4/first_vial_strips.png`) show clear visual stratification and layering in several first vials (e.g. vials 4 and 28). If liquid inside the vial is not fully mixed at the moment of camera capture, a single central patch cannot represent the entire vial's composition.
+- **Decision:** Do not report an artificial physical residue volume $V_r$. Instead, predict carryover risk directly from the measured recipe-to-recipe color gap.
+
 ### Cosmos groundwork (Oct 13)
+
 
 
 **What:** `scripts/ask_cosmos.py`, a small tested script that sends pictures (or a short video) and a question to NVIDIA's **Cosmos 3 Nano Reasoner** and prints its answer, plus step-by-step instructions in `RUNBOOK.md` for running Cosmos on a rented Brev GPU.

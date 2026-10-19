@@ -56,5 +56,6 @@ Received after we submitted the team plan (Oct 14, 2026). The feedback is copied
 4. **Tank contents per video** and whether the tanks hold dissolved dyes or pigments (affects the nozzle-buildup hypothesis and the tank reader).
 5. **Flush events and long idle times**, if any happened during the recordings.
 6. **The Teledyne check's pass/fail result per vial**, which would give an independent answer key for scoring.
+7. **Whether vials are mixed before the color check.** Some first vials may look layered on the vial_fill camera. Are vials mixed (or given time to mix) before the Teledyne check, and how long after the fill does it run?
 
 **Next step:** have the captain post this gap list to the organizers.
