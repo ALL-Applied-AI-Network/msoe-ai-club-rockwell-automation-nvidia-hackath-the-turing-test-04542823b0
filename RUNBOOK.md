@@ -112,6 +112,9 @@ All active project outputs are organized into per-card subdirectories under `out
 | `outputs/card3/` | `crop_check.png` | `scripts/crop_vial.py` | 5-vial visual check across volume variations (vials 3, 6, 9, 15, 28) showing LOW, HIGH, and BASE patches |
 | `outputs/card3/` | `crop_check_all30.png` | `scripts/crop_vial.py` | 5×6 grid of all 30 vials' last parked MP4 frames with LOW, HIGH, and BASE patches drawn, liquid status, and median Lab |
 | `outputs/card3/` | `judging_sheet.png` | `scripts/crop_vial.py` | 10×3 grid of all 30 vials (one row per recipe, 3 vials side by side) labeled only 'Vial N (Recipe R)' for human eye judging |
+| `outputs/card3/` | `ai_visual_verdicts.csv` | `scripts/record_ai_verdicts.py` | AI visual color judgments across all 30 vials (`matches`, `off`, `unsure`, or `reference`) evaluated directly from `judging_sheet.png` |
+| `outputs/card3/` | `baseline_results.csv` | `scripts/baseline_check.py` | Complete 30-vial table with CIELAB colors, ΔE2000 per patch (LOW, HIGH, BASE), human judge_1 verdicts, advance rule labels, and fixed/LORO classification flags |
+| `outputs/card3/` | `baseline_chart.png` | `scripts/baseline_check.py` | Publication-grade 3-panel stem plot showing ΔE2000 for all 1st and 2nd vials per patch, with ΔE=2.0 and ΔE=5.0 threshold lines |
 
 ---
 
@@ -221,6 +224,32 @@ First time only, install the packages: `pip install -r requirements.txt`
   - `outputs/card3/judging_sheet.png` (10×3 contact grid: 1 row per recipe, 3 vials side by side, labeled only 'Vial N (Recipe R)')
   - Terminal table with glass edge positions, liquid coverage status, and median CIELAB colors for all 30 vials.
 
+---
+
+### Script: `scripts/record_ai_verdicts.py` (Card 3 AI Visual Judging)
+- **Purpose:** Records AI visual color judgments across all 30 vials based strictly on `outputs/card3/judging_sheet.png` (evaluating whether vials 1–2 of each recipe match the clean 3rd reference vial). Updates `annotations/video5_visual_verdicts.csv` with the `ai_judge` column while preserving human columns `judge_1` and `judge_2` empty, and outputs the standalone 2-column CSV to `outputs/card3/ai_visual_verdicts.csv`.
+- **Run command:**
+  ```powershell
+  python scripts/record_ai_verdicts.py
+  ```
+- **Generated output:**
+  - `outputs/card3/ai_visual_verdicts.csv` (standalone 2-column CSV: `vial,ai_judge`)
+  - `annotations/video5_visual_verdicts.csv` (updated full schema: `vial,judge_1,judge_2,ai_judge,notes`)
+
+---
+
+### Script: `scripts/baseline_check.py` (Card 3 Step 2: Baseline Color Verification)
+- **Purpose:** Extracts liquid CIELAB color from last parked MP4 frames across LOW, HIGH, and BASE patches for all 30 vials. Computes ΔE2000 against each recipe's clean 3rd reference vial. Benchmarks performance against two answer keys:
+  1. **Human judge_1** from `annotations/video5_visual_verdicts.csv` (evaluated twice: counting 'unsure' as OFF, and counting 'unsure' as FINE).
+  2. **Advance Rule** (1st vial after each recipe change = at risk; all 2nd vials = fine).
+  Evaluates fixed thresholds (ΔE > 2.0, ΔE > 5.0) and strict leave-one-recipe-out (LORO) threshold selection where each held-out recipe's threshold is determined solely on the remaining recipes.
+- **Run command:**
+  ```powershell
+  python scripts/baseline_check.py
+  ```
+- **Generated output:**
+  - `outputs/card3/baseline_results.csv` (complete 30-vial table with measurements, ΔE per patch, verdicts, rule labels, and classification flags)
+  - `outputs/card3/baseline_chart.png` (3-panel stem chart displaying ΔE2000 for all 1st and 2nd vials per patch against ΔE=2.0 and ΔE=5.0 threshold lines)
 
 ---
 
