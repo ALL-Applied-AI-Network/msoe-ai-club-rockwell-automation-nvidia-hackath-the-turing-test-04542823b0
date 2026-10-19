@@ -156,6 +156,14 @@ The plant's current camera check only asks "is this a color I know?" A green via
 - **Main gap in one sentence:** Video 5 runs in a single direction and never tests carryover into a pale recipe from a blue-side recipe (the expected worst case for color distortion), never tests pure blue into pure orange, and includes no transitions into or out of a clear-only recipe to verify flush effectiveness.
 - **The open question (12→13 vs 8→9):** Transition 12→13 kept the same hue family and was still clearly off ($\Delta$E = 10.4, judged off), while 8→9 (balanced to balanced, darker) was the only first vial that looked clean ($\Delta$E = 2.0, judged matches). With only a single example of each same-hue change, we cannot tell whether 8→9 escaped carryover because of recipient volume, saturation, or station variance; more same-hue changes would tell us.
 
+### Card 4, step 1 · Color map g (Oct 19)
+
+**What we did:** In `scripts/fit_color_map.py`, we fitted a light-absorption (Beer–Lambert) map $g$ from recipe dye shares (orange share, blue share) to camera CIELAB color on the 8 tall recipes (Recipes 7–14, HIGH patch), converting Lab to linear RGB and optical absorbance $A = -\log_{10}(\text{linear RGB})$ per channel.
+
+- **Fitted model & performance:** Across all 8 recipes, the 9 parameters capture physical complementary absorption ($k_{\text{blue}, R} = +3.22$ and $k_{\text{orange}, B} = +2.67$). However, evaluated under strict leave-one-recipe-out (LORO) cross-validation, the median prediction error is **$\Delta$E 6.3** (mean 8.2), which is too large for the fine-grained $\Delta$E 2 / 5 risk thresholds.
+- **Why it misses:** It fails worst when it must extrapolate—specifically Recipes 7 ($\Delta$E 11.1) and 14 ($\Delta$E 21.3), which are the only pure-blue recipes in the tall set, while there is no pure-orange tall recipe available. Furthermore, two fitted coefficients are negative (e.g. $k_{\text{orange}, R} = -0.63$ and $k_{\text{blue}, B} = -0.44$), which pure physical light absorption does not allow. This shows that the camera system is not behaving as a pure transmission sensor, likely influenced by its dark floor and automatic exposure.
+- **Decision:** For known recipes where clean reference vials have been measured, use their actual measured patch colors directly rather than predicting them via $g$. Reserve $g$ only for predicting brand-new, unseen recipes in a queue, and explicitly display its expected uncertainty.
+
 ### Cosmos groundwork (Oct 13)
 
 
@@ -188,7 +196,7 @@ The plant's current camera check only asks "is this a color I know?" A green via
 ## What's next
 
 1. **Human answer key:** one judge so far (`judge_1`); add `judge_2` later and rerun `scripts/baseline_check.py`.
-2. **Card 3, step 2, baseline score:** done (HIGH patch at $\Delta$E > 5 catches carryover vials with $\le 1$ false alarm; small vials remain weak).
+2. **Card 3, step 2, baseline score:** done (HIGH patch at $\Delta$E > 5 catches carryover vials with 0 false alarms when 'unsure' counts as off (4 when it counts as fine); small vials remain weak).
 3. **Gap list for the organizers:** done (table in `annotations/video5_transitions.csv` and gap list in `docs/organizer-feedback.md`).
 4. **Card 4, flush advisor:** fit pipe residue volume $V_r$, build the dye-to-color map $g$, and predict risk on any recipe queue.
 5. **Card 3b, in-context Cosmos check:** test Cosmos on the same 30 vials against the baseline once Cosmos is running on Brev (needs Cosmos running on Brev; organizer feedback).

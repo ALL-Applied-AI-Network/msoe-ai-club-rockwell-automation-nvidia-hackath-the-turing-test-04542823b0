@@ -116,6 +116,8 @@ All active project outputs are organized into per-card subdirectories under `out
 | `outputs/card3/` | `baseline_results.csv` | `scripts/baseline_check.py` | Complete 30-vial table with CIELAB colors, ΔE2000 per patch (LOW, HIGH, BASE), human judge_1 verdicts, advance rule labels, and fixed/LORO classification flags |
 | `outputs/card3/` | `baseline_chart.png` | `scripts/baseline_check.py` | Publication-grade 3-panel stem plot showing ΔE2000 for all 1st and 2nd vials per patch, with ΔE=2.0 and ΔE=5.0 threshold lines |
 | `annotations/` | `video5_transitions.csv` | `scripts/list_transitions.py` | 9-row recipe transition table with volumes, dye shares, dye categories, strength/hue labels, first-vial ΔE, patch, and judge_1 verdict |
+| `outputs/card4/` | `color_map.json` | `scripts/fit_color_map.py` | Fitted Beer–Lambert absorbance parameters (9 coefficients) and LORO cross-validation errors across Recipes 7–14 |
+| `outputs/card4/` | `color_map_check.png` | `scripts/fit_color_map.py` | 4×2 comparison grid showing real clean 3rd-vial color squares vs LORO predicted squares with ΔE2000 labels |
 
 ---
 
@@ -263,6 +265,18 @@ First time only, install the packages: `pip install -r requirements.txt`
 - **Generated output:**
   - `annotations/video5_transitions.csv` (complete 9-row transitions table with volumes, shares, labels, first-vial ΔE, patch, and `judge_1` verdict)
   - Console output: narrow 9-row table fitting terminal width, plus full breakdown of seen-multiple, seen-once, and never-seen transitions across dye label, strength, and hue views.
+
+---
+
+### Script: `scripts/fit_color_map.py` (Card 4 Step 1: Beer–Lambert Color Map g)
+- **Purpose:** Fits a 9-parameter optical absorbance model $A = a_0 + k_{\text{orange}} \cdot \text{orange\_share} + k_{\text{blue}} \cdot \text{blue\_share}$ from recipe dye shares to camera color across the 8 tall recipes (Recipes 7–14, HIGH patch). Evaluates accuracy via leave-one-recipe-out (LORO) cross-validation, reverses absorbance to CIELAB, and visualizes real vs predicted color squares.
+- **Run command:**
+  ```powershell
+  python scripts/fit_color_map.py
+  ```
+- **Generated output:**
+  - `outputs/card4/color_map.json` (fitted coefficients, LORO per-recipe predictions, and median error)
+  - `outputs/card4/color_map_check.png` (side-by-side real vs predicted color square swatches labeled with ΔE2000)
 
 ---
 
