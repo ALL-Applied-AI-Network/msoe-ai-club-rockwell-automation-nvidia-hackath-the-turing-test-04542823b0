@@ -18,6 +18,18 @@ Deadlines: team plan Wed Oct 14, 11:59 PM CT · final submission Sun Nov 1, 11:5
 
 ---
 
+## 1b. Organizer feedback on our team plan (read before planning any card)
+
+Full text and our response: `docs/organizer-feedback.md`. In short:
+
+- **Focus confirmed:** warn about risky recipe changes, check the filled vial, explain the cause.
+- **Before any model training, compare color/fill math with an in-context Cosmos check.** New **Card 3b**: on the same 30 vials and the same answer key as the Card 3 baseline, Cosmos gets the vial image, a clean reference image of the intended recipe, and the current and previous recipe as text, and says whether the vial matches. Example vials in the prompt come from other recipes only (leave-one-recipe-out). Cards 7–8 (twin-trained vial model) start only if neither approach is good enough.
+- **Ground every explanation** in the current recipe, the previous recipe and the camera evidence (measured color against the reference, with the frame used).
+- **The twin is for appearance variation only** (lighting, glare, fill height, color range, jitter). It has no tanks and only approximate liquid color, so it does **not** simulate carryover. How much carryover happens comes from the real video 5 transitions.
+- **Data:** the 30-vial, 10-recipe labeled sequence with fill times and volumes is already supplied. Our job is to list the **transitions and metadata still missing** (gap list in `docs/organizer-feedback.md`).
+
+---
+
 ## 2. How the system works (the "inference cascade")
 
 Cheap math first, AI only when needed. Every vial goes through the cheapest step that can decide it.
@@ -38,7 +50,7 @@ A **tank-color reader** on the `tank_level` camera (Card 5b) identifies which dy
 
 ## 3. What we use Isaac Sim for
 
-Isaac Sim is our **training-data factory**. The rules say: train on twin data, test on real data.
+Isaac Sim is our **training-data factory**, used only if Card 3b shows the color math and in-context Cosmos aren't good enough (organizer feedback). The rules say: train on twin data, test on real data. The twin provides **appearance variation** (lighting, glare, fill height, color range); it does **not** simulate carryover, because it has no tanks and only approximate liquid color.
 
 - **The twin:** the organizers' USD model of the fill station and cap/seal station, with virtual cameras placed like the real `vial_fill` and `cap_seal` cameras, plus a render script. Tanks are **not** modeled; liquid color is **only approximate**.
 - **Where it runs:** headless (no screen) on a rented **Brev** GPU (RTX PRO 6000, L40S fallback), instance name `fluid-isaac`. Agents drive it with Python scripts; results are copied back with `brev copy`. Always **stop** the instance after a session.
@@ -53,7 +65,7 @@ Isaac Sim is our **training-data factory**. The rules say: train on twin data, t
 
 **Cosmos 3 Nano Reasoner** (model name `nvidia/cosmos3-nano-reasoner`) is our explanation engine and our clearest "Physical AI model" for the judges.
 
-- **What it does:** looks at images (or a short video) plus text and answers in text. It **never decides pass/fail**; the color math and vial model do that. It only explains flagged vials, and its answers are cached per recipe change (e.g. `"6->7"`) in `outputs/explanations_cache.json` and logged in `outputs/cosmos_log.csv`. If Cosmos fails, the dashboard shows "explanation unavailable" and still shows the decision.
+- **What it does:** looks at images (or a short video) plus text and answers in text. In the final system it explains flagged vials; whether it also helps decide pass/fail is settled by **Card 3b**, which compares an in-context Cosmos check with the color math on the same 30 vials (organizer feedback). Explanations must name the current recipe, the previous recipe and the camera evidence. It only explains flagged vials, and its answers are cached per recipe change (e.g. `"6->7"`) in `outputs/explanations_cache.json` and logged in `outputs/cosmos_log.csv`. If Cosmos fails, the dashboard shows "explanation unavailable" and still shows the decision.
 - **What we send it (Card 9):** the flagged vial crop, a clean reference image of its intended recipe, the previous recipe, the dispense order, and the flush advisor's prediction. We ask for JSON with keys `matches_recipe`, `observed_color`, `likely_cause`, `operator_action`, `confidence`.
 - **A/B/C experiment:** A = vial image only; B = + reference image + recipe info; C = B + our ΔE and flush prediction. Score how often each says the right match/no-match and names the right cause.
 - **Also used by:** the tank reader (Card 5b), only when the color math is "unsure".
@@ -104,7 +116,7 @@ We use **two** agents. We do **not** use Codex, GPT-6 Astra, or any other agent.
 
 - **Done:** Card 1 (data inventory in RUNBOOK.md; `scripts/show_examples.py` contact sheet), Card 2 (`scripts/align_cameras.py` aligned using `scripts/time_base.py` and MP4 video fallback for vials 25–30; `scripts/plot_time_gaps.py` histogram with 0 vials failing threshold; `scripts/show_aligned_frames.py`; `scripts/find_physical_fills.py`; `scripts/fill_timeline_strip.py`; corrected annotations in `annotations/video5_vial_times_corrected.csv` and `annotations/video5_frame_labels_corrected.csv`), and Card 3 Step 1 (`scripts/crop_vial.py` with verified LOW, HIGH, and BASE patches and glass edge detection across all 30 vials in `outputs/crop_check_all30.png`; `annotations/video5_visual_verdicts.csv`). Cosmos template `scripts/ask_cosmos.py` added.
 - **Time base rule:** Label `start_s` and `end_s` in `video5_vial_recipes.csv` are in MP4 playback seconds (30.0 fps container rate). Still-image file timestamps are in real wall-clock time (camera recorded at ~24.676 fps). Always convert between them using `scripts/time_base.py` (`mp4_to_real()`, `real_to_mp4()`). Never use `data/.../video5_frame_labels.csv` for vial numbers; use `annotations/video5_vial_times_corrected.csv` or `annotations/video5_frame_labels_corrected.csv`.
-- **Next:** Card 3, step 2 (baseline color check: compare CIELAB ΔE2000 of each vial to its recipe's clean 3rd vial, leave-one-recipe-out evaluation).
+- **Next:** Card 3, step 2 (baseline score: ΔE2000 of each vial to its recipe's clean 3rd vial, graded against the human answer key in `annotations/video5_visual_verdicts.csv`, thresholds fixed in advance or chosen leave-one-recipe-out). Then **Card 3b** (in-context Cosmos check on the same vials) and the **transitions/metadata gap list** for the organizers (`docs/organizer-feedback.md`). Cards 7–8 only if needed after Card 3b.
 - **The story so far, in plain English with the reasons:** `docs/PROGRESS.md`. After finishing any card, add a section there (what we did, what we found, why we did it that way) and update this list.
 
 ---
@@ -119,6 +131,7 @@ We use **two** agents. We do **not** use Codex, GPT-6 Astra, or any other agent.
 ├── requirements.txt     # Python packages for the laptop environment
 ├── .env.example         # Template for .env (copy it; never commit .env)
 ├── docs/
+│   ├── organizer-feedback.md # Organizers' feedback on our team plan + what it changes
 │   ├── team-plan.md         # Copy of the team plan (Team plan tab of our doc)
 │   ├── beginner-playbook.md # Copy of the beginner playbook (task cards + prompts)
 │   └── PROGRESS.md          # Plain-English progress log with the reasoning
@@ -161,6 +174,7 @@ Main packages: `opencv-python` (images/video), `numpy`, `pandas` (tables), `matp
 
 ## Full reference (imported)
 
+@./docs/organizer-feedback.md
 @./docs/team-plan.md
 @./docs/beginner-playbook.md
 @./docs/PROGRESS.md

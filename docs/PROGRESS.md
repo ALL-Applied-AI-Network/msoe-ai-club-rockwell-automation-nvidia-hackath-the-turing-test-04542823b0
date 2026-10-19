@@ -121,6 +121,16 @@ The plant's current camera check only asks "is this a color I know?" A green via
 - **Edge detection & safety check:** Detects the inner glass walls across all 30 vials ($x \in [271, 293]$ on left, $[325, 341]$ on right). Every patch is well within the liquid with **0 flagged vials** (no contact with glass walls, meniscus lines, carrier bracket, backdrop dark strip, screws, or glint reflections).
 - **Color conversion:** Patch color is extracted as the spatial median sRGB, then converted to CIELAB (D65) using `colour-science`.
 
+### Organizer feedback on our team plan (Oct 14)
+
+**What they said:** our three goals (warn before risky recipe changes, check each filled vial, explain the cause) are the right focus. They asked us to (1) compare plain color/fill measurements with an in-context Cosmos approach **before** training any model, (2) ground explanations in the current and previous recipes and the camera evidence, (3) keep "the twin makes realistic-looking variations" separate from "the twin simulates carryover", since it has no tanks and only approximate liquid color, and (4) instead of requesting data that's already supplied, list which transitions and metadata are still missing. Full text: `docs/organizer-feedback.md`.
+
+**What we changed and why:**
+- **Added Card 3b, a Cosmos check, before any training.** If simple color math plus Cosmos, shown a reference vial and the recipes, already catches the off vials, training a model on synthetic images adds cost and risk for no gain. Testing the cheaper options first is how engineers avoid over-building.
+- **Explanations must cite evidence:** the intended recipe, the previous recipe and what the camera measured. An explanation that only says "probably carryover" can't be checked; one that names the previous recipe and the measured color shift can.
+- **The twin is for appearance, not carryover.** Renders can vary lighting, glare, fill height and color, which helps a model cope with real-world variety. But carryover happens in pipes and tanks the twin doesn't model, so its strength comes only from the real recipe changes in video 5.
+- **Data gap list instead of a data request.** Video 5 has exactly 9 recipe changes, each seen once. We'll list which risky changes never occur (e.g. blue → orange) and which metadata is missing (the recipe before vial 1, recipe sequences for videos 1–4, tank contents, Teledyne results), and send that list to the organizers.
+
 ### Cosmos groundwork (Oct 13)
 
 
@@ -142,17 +152,22 @@ The plant's current camera check only asks "is this a color I know?" A green via
 | **Test with "leave-one-recipe-out", never a random split** | Neighboring frames of the same vial are near-copies. A random split puts copies in both training and testing, so the model looks great by memorizing. Hiding a whole recipe at a time proves it works on a recipe it has never seen. |
 | **Measure color in CIELAB and compare with ΔE2000, not raw RGB** | RGB is how screens store color, not how eyes see it: equal RGB steps can look very different. CIELAB is designed so equal distances look equally different, and ΔE2000 is the industry formula for "how different do two colors look". A ΔE of about 2 is the smallest difference most people notice, which gives our thresholds real meaning. |
 | **Model dye amounts first, then convert to color** | Dyes absorb light; they don't add up like paint on a screen. By the Beer–Lambert law, absorbance grows in proportion to dye concentration, while the light that gets through falls off exponentially. That is why a drop of orange changes a pale vial a lot and a dark one barely, and why orange plus blue turns green instead of "orange-blue". So we add up dye amounts (orange share, blue share), which *do* add, and only then convert to the color the camera sees with one calibrated map. |
+| **Test simple color math and an in-context Cosmos check before training any model** | The organizers asked for it, and it's good practice: the cheapest method that works wins. A trained model is only worth its cost if it clearly beats both simpler options on the same vials and the same answer key. |
+| **The digital twin varies appearance; it does not simulate carryover** | The twin has no tanks and only approximate liquid colors, so it can't reproduce how leftover liquid moves through the pipe. We use it for lighting, glare, fill height and color variety, and take the size of carryover only from real recipe changes. |
 | **Use each recipe's 3rd vial as its clean reference** | By the 3rd fill, two fills have pushed the old mixture out of the pipe, so it is the best real example of that recipe's true color. |
-| **Cheap math first, AI only to explain** | Color math is instant, free and gives the same answer every time. Vision-language models like Cosmos are slower and can be confidently wrong, so Cosmos never decides pass/fail; it only explains vials that were already flagged, and we score how often its explanations are right. |
+| **Cheap math first, AI where it earns its place** | Color math is instant, free and gives the same answer every time. Vision-language models like Cosmos are slower and can be confidently wrong, so Card 3b measures how well Cosmos judges vials (given a reference vial and the recipes) against the same answer key before we decide its role. Its explanations are scored too. |
 | **Two coding agents: Gemini for everyday work, Claude Code for hard problems and reviews** | None of us codes, so agents write the code and we check it. Gemini is free for routine work; Claude Code handles the hardest parts (headless Isaac Sim, stubborn bugs) and double-checks anything that produces a number for judges. A second model catches mistakes a beginner can't see. We dropped Codex/GPT-6 Astra to keep one simple setup. |
 
 ---
 
 ## What's next
 
-1. **Card 3, baseline color check:** pick one fixed box around the vial, measure average CIELAB color just after each fill ends, compare each vial with its recipe's 3rd vial using ΔE2000, and report caught first vials and false alarms. This is the number everything later must beat.
-2. **Cosmos playground test:** try vial 7 (green) in the browser with and without recipe info, and paste the answers into `RUNBOOK.md`.
-
+1. **Human answer key:** two teammates fill in `annotations/video5_visual_verdicts.csv` by eye from the judging sheet, separately and without looking at any color numbers.
+2. **Card 3, step 2, baseline score:** ΔE2000 of each 1st and 2nd vial to its recipe's 3rd vial, graded against the answer key, with thresholds fixed in advance (2 and 5) or chosen leave-one-recipe-out.
+3. **Card 3b, in-context Cosmos check:** the same 30 vials and answer key, comparing Cosmos's score with the baseline (organizer feedback).
+4. **Gap list for the organizers:** a table of the 9 recipe changes in video 5 and the transitions/metadata still missing (`docs/organizer-feedback.md`).
+5. **Decide on training:** start Cards 7–8 (twin-trained model) only if steps 2–3 aren't good enough.
+6. **Cosmos playground test:** try vial 7 (green) in the browser with and without recipe info, and paste the answers into `RUNBOOK.md`.
 
 ## Words used here
 
