@@ -246,6 +246,7 @@ where $\Delta E_{\text{recipe gap}}$ is the $\Delta E2000$ between the two recip
 2. **Card 6, first twin render:** render 10 images from the twin's `vial_fill` camera on Brev, compare angle and vial position with a real frame; decides whether Cards 7–8 are feasible.
 3. **Card 9, explanations:** explain flagged vials with Cosmos (version C: flagged vial crop + reference image + recipe info + measured $\Delta$E and flush prediction), with explanations scored.
 4. **Card 10, dashboard:** operator interface integrating the flush advisor, camera color check, and Cosmos explanations (`PLAN.md`).
+5. **Human answer key:** one judge so far (`judge_1`); add `judge_2` later and rerun `scripts/baseline_check.py` and `scripts/score_cosmos_check.py`.
 
 ## Words used here
 
