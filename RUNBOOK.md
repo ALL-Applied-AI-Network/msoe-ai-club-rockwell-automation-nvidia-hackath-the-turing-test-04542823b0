@@ -128,6 +128,12 @@ All active project outputs are organized into per-card subdirectories under `out
 | `outputs/card4/` | `risk_model.csv` | `scripts/fit_risk_model.py` | Measured risk model evaluation across HIGH (7 transitions) and LOW (9 transitions) with LOTO predictions |
 | `outputs/card4/` | `risk_model.json` | `scripts/fit_risk_model.py` | Fitted physical slopes (alpha), Spearman correlations, and light match rates |
 | `outputs/card4/` | `risk_model.png` | `scripts/fit_risk_model.py` | Dual-panel scatter plot of first-vial error vs recipe gap with fitted lines and risk zones |
+| `outputs/card3b/crops/` | `vial01.png` ... `vial30.png` | `scripts/export_vial_crops.py` | 30 liquid-only vial crops between inner glass walls ($x \in [296, 322]$), short side $\ge 224$ px, no labels/holders |
+| `outputs/card3b/` | `manifest.csv` | `scripts/export_vial_crops.py` | Dosing amounts, prior recipes, batch positions, and reference vial IDs for all 30 vials |
+| `scratch/` | `card3b_crops.png` | `scripts/export_vial_crops.py` | 3×10 visual contact sheet of all 30 liquid crops |
+| `scratch/` | `card3b_brev.zip` | Laptop packaging | Standalone deployment archive containing `cosmos_check.py`, `ask_cosmos.py`, `manifest.csv`, and `crops/` |
+| `outputs/card3b/` | `cosmos_check_answers.csv` | `cosmos_check.py` (on Brev) | 216 raw responses and decisions across 18 baseline vials × 4 prompt versions × 3 repeats |
+| `outputs/card3b/` | `per_vial.csv` | `scripts/score_cosmos_check.py` | 18-vial evaluation table with judge_1, HIGH/LOW $\Delta$E, baseline flag, and V0–V3 repeat answers and majorities |
 
 ---
 
@@ -347,6 +353,57 @@ First time only, install the packages: `pip install -r requirements.txt`
 - **Console output:**
   - Per-transition checks: patch used, recipe color gap $\Delta E$, risk light, and operator action.
   - Reordering advice: suggested order if it reduces REDs or AMBERs; otherwise confirms current order is optimal or recommends a flush if RED changes remain.
+
+---
+
+### Script: `scripts/export_vial_crops.py` (Card 3b Step 1: Liquid Crop Export)
+- **Purpose:** Extracts liquid-only vial crops between inner glass walls ($x \in [296, 322]$), from $5\text{ px}$ below meniscus to $5\text{ px}$ above base, from the last parked mp4 frame. Resizes crops so the short side is $\ge 224\text{ px}$ with Lanczos4 upscaling (clean liquid column, zero labels/caps/holders). Builds `manifest.csv` with recipe amounts and reference vial IDs.
+- **Run command:**
+  ```powershell
+  python scripts/export_vial_crops.py
+  ```
+- **Generated output:**
+  - `outputs/card3b/crops/vial01.png` ... `vial30.png` (30 liquid-only PNGs)
+  - `outputs/card3b/manifest.csv` (30-row metadata table)
+  - `scratch/card3b_crops.png` (3×10 visual contact sheet)
+
+---
+
+### Brev Cosmos Run: `cosmos_check.py` (Card 3b Step 2: In-Context Cosmos Verification)
+- **Purpose:** Runs Cosmos 3 Nano Reasoner on Brev across the 18 baseline vials (recipes 6–14, 1st and 2nd vials) across 4 frozen prompt versions (V0 text-only, V1 compare, V2 compare+recipes, V3 compare+recipes+few-shot), with 3 repeats each (216 calls). Saves answers incrementally with resumption support.
+- **Package and deploy to Brev:**
+  ```powershell
+  # 1. Package zip on laptop
+  python -c "import zipfile, pathlib; z=zipfile.ZipFile('scratch/card3b_brev.zip','w',zipfile.ZIP_DEFLATED); [z.write(f, f.name) for f in [pathlib.Path('scripts/cosmos_check.py'), pathlib.Path('scripts/ask_cosmos.py'), pathlib.Path('outputs/card3b/manifest.csv')]]; [z.write(p, f'crops/{p.name}') for p in sorted(pathlib.Path('outputs/card3b/crops').glob('*.png'))]; z.close()"
+
+  # 2. Copy zip to Brev instance
+  brev copy scratch/card3b_brev.zip fluid-cosmos:~
+  ```
+- **Run on Brev (inside instance terminal):**
+  ```bash
+  unzip card3b_brev.zip -d card3b
+  cd card3b
+  # Dry-run check:
+  python cosmos_check.py --dry-run --vials 5 7 --versions V2
+  # Full run (216 calls, ~15-20 min against local NIM on port 8000):
+  python cosmos_check.py
+  ```
+- **Copy results back to laptop:**
+  ```powershell
+  brev copy fluid-cosmos:~/card3b/cosmos_check_answers.csv outputs/card3b/cosmos_check_answers.csv
+  ```
+
+---
+
+### Script: `scripts/score_cosmos_check.py` (Card 3b Step 3: Cosmos vs Baseline Scoring)
+- **Purpose:** Scores Cosmos answers from `outputs/card3b/cosmos_check_answers.csv`. Takes majority vote across 3 repeats ("unclear" answers count as flagged). Reports repeat agreement (3/3 identical), saves per-vial table with judge_1 and $\Delta E$ to `outputs/card3b/per_vial.csv`, and calculates balanced accuracy, catch rate, pass rate, precision, F1, and false alarms against human judge_1 and the Advance Rule, side by side with the Card 3 color baseline.
+- **Run command:**
+  ```powershell
+  python scripts/score_cosmos_check.py
+  ```
+- **Generated output:**
+  - `outputs/card3b/per_vial.csv` (18-vial table with judge_1, HIGH/LOW $\Delta E$, baseline flag, and V0–V3 answers and majorities)
+  - Console tables for repeat agreement, per-vial inspection, and balanced accuracy benchmarks on All 18 vials and 16 Tall vials.
 
 ---
 
