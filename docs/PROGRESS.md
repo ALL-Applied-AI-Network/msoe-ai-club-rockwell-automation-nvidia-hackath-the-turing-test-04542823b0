@@ -174,6 +174,19 @@ The plant's current camera check only asks "is this a color I know?" A green via
 - **Unmixed / layered appearance on camera:** Crop strips (`outputs/card4/first_vial_strips.png`) show clear visual stratification and layering in several first vials (e.g. vials 4 and 28). If liquid inside the vial is not fully mixed at the moment of camera capture, a single central patch cannot represent the entire vial's composition.
 - **Decision:** Do not report an artificial physical residue volume $V_r$. Instead, predict carryover risk directly from the measured recipe-to-recipe color gap.
 
+### Card 4, step 3 · Measured risk model (Oct 19)
+
+**What we built:** In `scripts/fit_risk_model.py`, we developed a direct measured risk model predicting carryover error from the recipe-to-recipe color distance:
+$$\widehat{\Delta E}_{\text{first vial}} = \alpha \times \Delta E_{\text{recipe gap}} \quad (\text{without intercept})$$
+where $\Delta E_{\text{recipe gap}}$ is the $\Delta E2000$ between the two recipes' clean 3rd vials, and $\alpha$ is fitted under leave-one-transition-out (LOTO) cross-validation (about 0.69 on the HIGH patch across 7 tall transitions, and 0.67 on the LOW patch across all 9 transitions).
+
+- **Ranks changes in the right order:** The model strongly ranks recipe transitions by true carryover risk, with Spearman rank correlation $\rho = 0.786$ ($p = 0.036$) on the HIGH patch and $\rho = 0.817$ ($p = 0.007$) on the LOW patch. In both patches, 8→9 is correctly predicted as the safest transition with the lowest error, while the high-risk shifts 13→14, 11→12, and 6→7 are all correctly flagged RED.
+- **Risk lights vs 'Always RED' baseline:**
+  - On the LOW patch, LOTO risk lights match the measured light in **8 of 9 transitions (88.9%)**, compared to only **5 of 9 (55.6%)** for a naive "always RED" baseline.
+  - On the HIGH patch, LOTO matches **6 of 7 (85.7%)**, but so does "always RED", because 6 of the 7 tall transitions in Video 5 were indeed RED. The only LOTO mismatch on HIGH is one false amber (8→9 predicted amber vs measured green), but 8→9 is still recognized as lowest error.
+- **Why the advisor shows lights, not exact numbers:** Predicted $\Delta E$ values are rough estimates (individual LOTO errors deviate by up to $\sim 13\ \Delta E$ on HIGH, e.g. on 7→8 and 13→14). Therefore, the flush advisor outputs the traffic light (GREEN, AMBER, RED) and recommended operator action rather than pretending the numerical $\Delta E$ is exact.
+- **Physical meaning of $\alpha$:** An $\alpha$ of $\approx 0.67\text{--}0.69$ means the first vial's color error is about two-thirds of the whole gap between the recipes, i.e. the first vial looks more like the old recipe than the new one. That is surprisingly large for a small pipe leftover (see step 2) and is an open question for the organizers. (Note: this describes the color position on the camera, not that "two-thirds of the liquid carries over").
+
 ### Cosmos groundwork (Oct 13)
 
 

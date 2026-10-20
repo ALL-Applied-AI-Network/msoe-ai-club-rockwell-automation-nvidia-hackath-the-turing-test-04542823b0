@@ -57,5 +57,6 @@ Received after we submitted the team plan (Oct 14, 2026). The feedback is copied
 5. **Flush events and long idle times**, if any happened during the recordings.
 6. **The Teledyne check's pass/fail result per vial**, which would give an independent answer key for scoring.
 7. **Whether vials are mixed before the color check.** Some first vials may look layered on the vial_fill camera. Are vials mixed (or given time to mix) before the Teledyne check, and how long after the fill does it run?
+8. **Volume of the shared mixing path** (pipe and nozzle, in mL). Our first vials sit about two-thirds of the way back toward the previous recipe's color, which looks larger than a small leftover would cause.
 
 **Next step:** have the captain post this gap list to the organizers.

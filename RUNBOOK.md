@@ -125,6 +125,9 @@ All active project outputs are organized into per-card subdirectories under `out
 | `outputs/card4/` | `measurement_check.csv` | `scripts/check_measurements.py` | Lightness and absorbance bounding sanity checks across the 7 tall transitions |
 | `outputs/card4/` | `mixing_check.png` | `scripts/check_measurements.py` | $a^*$ vs $b^*$ color plane plots comparing first vial against mixing line between clean endpoints |
 | `outputs/card4/` | `first_vial_strips.png` | `scripts/check_measurements.py` | Side-by-side 3-vial crops (previous 3rd, first, next 3rd) across all 9 transitions showing visual layering |
+| `outputs/card4/` | `risk_model.csv` | `scripts/fit_risk_model.py` | Measured risk model evaluation across HIGH (7 transitions) and LOW (9 transitions) with LOTO predictions |
+| `outputs/card4/` | `risk_model.json` | `scripts/fit_risk_model.py` | Fitted physical slopes (alpha), Spearman correlations, and light match rates |
+| `outputs/card4/` | `risk_model.png` | `scripts/fit_risk_model.py` | Dual-panel scatter plot of first-vial error vs recipe gap with fitted lines and risk zones |
 
 ---
 
@@ -315,6 +318,19 @@ First time only, install the packages: `pip install -r requirements.txt`
   - `outputs/card4/measurement_check.csv` (bounding check table for $L^*$ and absorbance channels)
   - `outputs/card4/mixing_check.png` ($a^*$ vs $b^*$ color plane plots with mixing lines)
   - `outputs/card4/first_vial_strips.png` (side-by-side crops for visual inspection of layering)
+
+---
+
+### Script: `scripts/fit_risk_model.py` (Card 4 Step 3: Measured Risk Model)
+- **Purpose:** Fits a measured risk model for carryover directly from recipe color gap ($\widehat{\Delta E} = \alpha \cdot \text{gap}$, without intercept). Evaluates both HIGH patch (7 transitions, $\ge 60$ mL) and LOW patch (all 9 transitions) under leave-one-transition-out (LOTO) cross-validation, assigning risk lights (GREEN $<2$, AMBER $2\text{--}5$, RED $>5$). Computes rank correlation (Spearman) and compares against an "always RED" baseline.
+- **Run command:**
+  ```powershell
+  python scripts/fit_risk_model.py
+  ```
+- **Generated output:**
+  - `outputs/card4/risk_model.csv` (complete evaluation table with recipe gaps, measured/predicted errors, lights, and LOTO alphas)
+  - `outputs/card4/risk_model.json` (saved fitted alphas and benchmark metrics)
+  - `outputs/card4/risk_model.png` (publication-quality dual-panel scatter plot)
 
 ---
 
