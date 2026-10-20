@@ -220,6 +220,10 @@ def main():
         print("Current order is already the best (only 1 recipe in queue).")
         return
 
+    if len(args.queue) > 6:
+        print("Reorder check skipped: more than 6 recipes in the queue (the Batch Scheduler holds up to 3).")
+        return
+
     # Find unique permutations of the queue
     unique_perms = sorted(list(set(itertools.permutations(args.queue))))
 
