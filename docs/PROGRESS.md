@@ -210,6 +210,30 @@ where $\Delta E_{\text{recipe gap}}$ is the $\Delta E2000$ between the two recip
 - **Decision:** the color check decides pass/fail; Cosmos explains flagged vials, given our measured $\Delta$E and the previous recipe as text (Card 9, version C), and its explanations will be scored. Training (Cards 7–8) is not needed for tall vials; the remaining gap is the 30–40 mL vials, where only the weaker LOW patch works, which is the twin's job (fill height and lighting variation). Only 2 short vials are scored in video 5, so a gain there can't be proven statistically with this data.
 - **Limitations:** one human judge; 18 vials; crops are 26-pixel-wide strips enlarged ~9×; the prompts were designed after seeing Cosmos's answers on vials 7 and 13, then frozen before the full run.
 
+### Card 10 · Operator Dashboard (Oct 20)
+
+**Status:** Card 10 steps 1–9 done; step 10 (Cosmos explanations) after Card 9; teammate cold-start test pending.
+
+**What we built:** `app/dashboard.py` (built with Streamlit), an operator interface that brings together all parts of Carryover Copilot into a single unified screen:
+1. **Pre-fill flush advisor:** Predicts carryover risk lights before dispensing and suggests a reorder only when it removes a red or amber change for the Batch Scheduler (`scripts/flush_advisor.py`).
+2. **Post-fill camera color verification:** Replays recorded video 5 vial by vial (live camera mode is not built), outlining measurement patches and rendering clear PASS / UNSURE / FAIL verdicts (`scripts/vial_check.py` and `scripts/replay_feed.py`).
+3. **Cosmos Physical AI explanations:** Will show Cosmos explanations once Card 9 generates them (PLAN.md step 10); today it shows the evidence line and "Explanation unavailable" (`scripts/explanation_cache.py`).
+
+- **The three-panel layout:**
+  - **Panel 1 (Recipe Queue):** Displays the full recipe sequence (`5 → 6 → ... → 14`) with traffic lights. Highlights the active change (e.g. `6 → 7` is 🔴 RED, `8 → 9` is 🟡 AMBER) with recipe color gaps and operator actions. Below it, an automated 3-recipe lookahead advisor evaluates queue permutations for the plant's Batch Scheduler (e.g., for queue 7, 12, 8 after Recipe 6, suggests `12 → 8 → 7` to reduce RED transitions from 3 to 2, with "needs the planner's OK"; for 7, 8, 9 after Recipe 6, notes "No order removes a red change").
+  - **Panel 2 (Latest Vial Inspection):** Replays recorded video 5 vial by vial (live camera mode is not built) in order, showing the parked vial crop under the nozzle with the active measurement patch outlined (HIGH or LOW, color-coded by verdict). Renders a prominent `🟢 PASS`, `🟡 UNSURE`, or `🔴 FAIL` banner, or a neutral gray `⚪ REFERENCE (not checked)` banner for clean 3rd vials. Includes Next Vial, Reset, Jump-to-vial slider, and 3-second Auto-play.
+  - **Panel 3 (Cosmos Explanation):** Will show Cosmos explanations once Card 9 generates them (PLAN.md step 10); today it shows the evidence line and "Explanation unavailable (Cosmos not running)". The evidence line breaks down the intended recipe, previous recipe (explaining "2nd vial of the batch" where applicable, and "recording starts here" for Vial 1), observed color shift (measured vs reference Lab), color distance $\Delta E$, and camera video frame number.
+- **Inference Cascade Counter:**
+  - Shows the "cheap math first, AI only when needed" design principle:
+    - **Step 1 (Pre-fill):** 9 recipe changes evaluated (100% queue advisory).
+    - **Step 2 (Color-checked):** 20 production vials evaluated by color math in **~0.7 ms/vial** (~75 ms total with MP4 video frame extraction).
+    - **Reference Vials:** 10 clean 3rd vials separated as baselines (never falsely counted as passes).
+    - **Step 3 (Unsure zone):** 2 borderline vials ($2.0 \le \Delta E \le 5.0$) routed to operator visual inspection.
+    - **Step 4 (Explanation):** 11 discolored vials flagged for Cosmos explanation (10 with a known recipe change, 1 with unknown prior).
+- **Honesty banner & end-of-run verification:**
+  - A permanent top warning makes clear that 3rd vials in Video 5 serve as clean references for this demonstration, so the replay is a demonstration, not our evaluation score (our formal score is the Card 3 leave-one-recipe-out result).
+  - When the replay finishes at Vial 30, an End-of-Run Summary table compares all 13 flagged/borderline vials with teammate visual inspection (`judge_1`): **0 misses on PASS vials** (all 7 PASS vials were confirmed 'matches'). Vial 7 is caught as 🔴 FAIL ($\Delta E = 25.55$) where the human judge was 'unsure'.
+
 ### Cosmos groundwork (Oct 13)
 
 
@@ -242,11 +266,10 @@ where $\Delta E_{\text{recipe gap}}$ is the $\Delta E2000$ between the two recip
 
 ## What's next
 
-1. **Card 3b, in-context Cosmos check:** done (color math beat every Cosmos version; color check decides pass/fail, Cosmos explains).
+1. **Card 10, dashboard:** Card 10 steps 1–9 done; step 10 (Cosmos explanations) after Card 9; teammate cold-start test pending.
 2. **Card 6, first twin render:** render 10 images from the twin's `vial_fill` camera on Brev, compare angle and vial position with a real frame; decides whether Cards 7–8 are feasible.
-3. **Card 9, explanations:** explain flagged vials with Cosmos (version C: flagged vial crop + reference image + recipe info + measured $\Delta$E and flush prediction), with explanations scored.
-4. **Card 10, dashboard:** operator interface integrating the flush advisor, camera color check, and Cosmos explanations (`PLAN.md`).
-5. **Human answer key:** one judge so far (`judge_1`); add `judge_2` later and rerun `scripts/baseline_check.py` and `scripts/score_cosmos_check.py`.
+3. **Card 9, explanations:** explain flagged vials with Cosmos (version C: flagged vial crop + reference image + recipe info + measured $\Delta E$ and flush prediction), with explanations scored.
+4. **Human answer key:** one judge so far (`judge_1`); add `judge_2` later and rerun `scripts/baseline_check.py` and `scripts/score_cosmos_check.py`.
 
 ## Words used here
 

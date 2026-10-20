@@ -474,3 +474,79 @@ The build.nvidia.com page has no hosted Python example for Cosmos 3; its **Deplo
   Options: `--think` (show reasoning), `--system "..."` (system prompt), `--fps 2` (frames per second sampled from a video).
 - **Expected output:** `Asking nvidia/cosmos3-nano-reasoner at http://127.0.0.1:8000/v1 ...`, then `--- Cosmos reasoning ---` (with `--think`) and `--- Cosmos answer ---`.
 - **If it fails:** "Could not reach Cosmos" means the container or the port forward isn't running. "rejected the API key" means `NVIDIA_API_KEY` in `.env` is wrong (only matters for a hosted endpoint).
+
+---
+
+## 4. Operator Dashboard (Carryover Copilot)
+
+### Prerequisites (Run Once)
+Before starting the dashboard, two offline analysis scripts must have generated the baseline measurements and risk model parameters:
+
+1. **Clean reference baseline colors:**
+   ```powershell
+   python scripts/baseline_check.py
+   ```
+   *Generates:* `outputs/card3/baseline_results.csv` (holds Lab colors and $\Delta E$ for all 30 vials; each recipe's 3rd vial is its reference).
+
+2. **Fitted carryover risk model:**
+   ```powershell
+   python scripts/fit_risk_model.py
+   ```
+   *Generates:* `outputs/card4/risk_model.json` (fitted risk scaling factor $\alpha$ for HIGH and LOW patches).
+
+---
+
+### The One Command to Start the Dashboard
+In your activated Python virtual environment (`.venv`):
+
+```powershell
+streamlit run app/dashboard.py
+```
+*(Or directly: `.\.venv\Scripts\streamlit run app/dashboard.py`)*
+
+This opens a browser tab at `http://localhost:8501`.
+
+---
+
+### What the Page Shows
+
+1. **Top Honesty Banner:**
+   A visible notice confirming that this interface is a live demonstration replaying recorded Video 5 (using its 3rd vials as clean reference baselines), and that our formal score is the Card 3 leave-one-recipe-out result.
+2. **Panel 1 — Recipe Queue (Left):**
+   - Displays the sequence of 10 recipes in Video 5 (`5 → 6 → ... → 14`) with traffic light indicators (🔴 RED, 🟡 AMBER, 🟢 GREEN).
+   - Highlights the upcoming recipe transition, showing the recipe color gap $\Delta E$ and recommended operator action (proceed, flag for inspection, or flush/reorder).
+   - Evaluates the next 3 recipes in the Batch Scheduler window and suggests a reorder only when it removes a red or amber change (e.g. for queue 7, 12, 8 after Recipe 6, suggests `12 → 8 → 7` to reduce RED changes from 3 to 2) with "needs the planner's OK", or advises a flush if no reordering removes a red light (as for 7, 8, 9).
+3. **Panel 2 — Latest Vial Inspection (Center):**
+   - Replays recorded video 5 vial by vial (live camera mode is not built) to inspect the vial currently parked under the camera nozzle.
+   - Outlines the active measurement patch directly on the vial crop (🟢 green if PASS, 🟡 amber if UNSURE, 🔴 red if FAIL).
+   - Displays target volume, target recipe, previous vial recipe, clean reference vial number, and color difference $\Delta E_{2000}$.
+   - Shows a large status banner: `🟢 PASS (In Spec)`, `🟡 UNSURE (Borderline)`, `🔴 FAIL (Discolored)`, or a gray `⚪ REFERENCE (not checked)` banner for clean 3rd vials.
+   - Interactive controls: **▶ Next Vial**, **⏮ Reset (V1)**, **Jump to vial slider**, and **Auto-play (3s)**.
+4. **Panel 3 — Cosmos Explanation (Right):**
+   - Will show Cosmos explanations once Card 9 generates them (PLAN.md step 10); today it shows the evidence line and "Explanation unavailable (Cosmos not running)".
+   - Displays a comprehensive physical camera evidence breakdown: intended recipe, previous recipe (explaining "2nd vial of the batch" where applicable, and "recording starts here" for Vial 1), observed color shift (measured vs reference Lab), color distance $\Delta E$, and camera video frame number.
+   - For PASS vials, shows "No explanation needed". For UNSURE vials, shows "Check by eye (vial model not built)".
+5. **Inference Cascade Counter (Bottom):**
+   - Shows throughput across all 4 cascade steps:
+     - **Step 1 (Pre-Fill):** 9 recipe transitions evaluated before dispensing (100% queue advisory).
+     - **Step 2 (Color-Checked):** 20 production vials color-checked (~0.7 ms/vial math time; ~75 ms including reading frame from MP4 video).
+     - **Reference Vials:** 10 clean 3rd vials kept separate (not counted as passed checks).
+     - **Step 3 (Unsure Zone):** 2 borderline vials marked for visual check.
+     - **Step 4 (Explanation):** 11 vials flagged for explanation (10 with known recipe change, 1 with unknown previous recipe).
+6. **End-of-Run Summary Table (Appears on Vial 30):**
+   - When replay reaches Vial 30, displays a side-by-side comparison table of all 13 FAIL and UNSURE vials alongside teammate visual judging (`judge_1`).
+   - Verifies 0 of 7 misses on PASS vials (all 7 PASS vials were judged 'matches').
+
+---
+
+### Troubleshooting (Missing Files)
+If the dashboard reports a missing file on startup:
+
+- **`Missing outputs/card3/baseline_results.csv`:**
+  Run `python scripts/baseline_check.py`.
+- **`Missing outputs/card4/risk_model.json`:**
+  Run `python scripts/baseline_check.py`, then `python scripts/fit_risk_model.py`.
+- **`Could not open video file: data/.../vial_fill_video_5.mp4`:**
+  Ensure the raw dataset is unpacked in `data/csi-vial-fill-dataset/` per Section 1.
+- **`Missing annotations/video5_vial_times_corrected.csv`:**
+  Ensure Card 2 camera alignment annotations exist in `annotations/`.
