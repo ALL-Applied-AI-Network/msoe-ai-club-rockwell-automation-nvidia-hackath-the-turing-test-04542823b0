@@ -202,6 +202,14 @@ where $\Delta E_{\text{recipe gap}}$ is the $\Delta E2000$ between the two recip
 - **Conservative reordering advice:** The advisor evaluates all queue permutations (holding the current station state fixed via `--after`). It suggests an alternative order **only** if that order strictly reduces the number of RED changes, or keeps REDs equal while reducing AMBERs. It never suggests a reorder based on tiny numerical score differences, as predicted $\Delta E$ can vary by $\sim 13\ \Delta E$. For example, with queue `7 12 8 --after 6`, it suggests `12 -> 8 -> 7` (reducing RED changes from 3 to 2). When no permutation eliminates a RED change (e.g. `11 12 13 --after 10`), it explicitly advises: `"No order removes a red change; consider a flush (needs the plant manager's approval)."`
 - **Flush effects unmeasured:** The tool explicitly reminds the user that a flush requires plant manager approval and that its cleaning effect has not been measured yet, as Video 5 contains no flush sequences.
 
+### Card 3b · Color math vs in-context Cosmos (Oct 20)
+
+- **What:** we asked Cosmos 3 Nano Reasoner whether each of the same 18 vials as the baseline (1st and 2nd vials of recipes 6–14) matches its recipe, using liquid-only crops, 4 prompt versions fixed and committed before any results (`4aec33c`), 3 repeats each, majority vote. V0 = vial + recipe text; V1 = vial + clean reference vial; V2 = V1 + recipe text; V3 = V2 + one worked example from another recipe.
+- **Result on the 16 tall vials (judge_1, unsure counts as off):** color math HIGH patch $\Delta$E>5 caught 8 of 8 with 0 false alarms (balanced accuracy 1.00). Best Cosmos version V1 caught 5 of 8 with 3 false alarms (0.63). V0 said "no" to 51 of 54 questions (flags everything, 0.50); V2 0.38; V3 0.44. On all 18 vials (LOW patch for the two short vials): LOW 7 of 10, 1 false alarm (0.79) vs V1 7 of 10, 3 false alarms (0.66).
+- **Why:** recipe text makes Cosmos judge by what it expects a dye mix to look like rather than by the reference image (V0, V2). Its color naming of dark mixtures is unstable: on vial 13 one repeat called image 1 green and image 2 yellow, another the reverse; only 8 of 18 vials got the same V1 answer in all 3 repeats. The worked example (V3) made it explain tint away ("darker because leftover Recipe 12 tinted it" followed by "Yes"). It does reliably catch large hue changes (vials 7 and 28, unanimous).
+- **Decision:** the color check decides pass/fail; Cosmos explains flagged vials, given our measured $\Delta$E and the previous recipe as text (Card 9, version C), and its explanations will be scored. Training (Cards 7–8) is not needed for tall vials; the remaining gap is the 30–40 mL vials, where only the weaker LOW patch works, which is the twin's job (fill height and lighting variation). Only 2 short vials are scored in video 5, so a gain there can't be proven statistically with this data.
+- **Limitations:** one human judge; 18 vials; crops are 26-pixel-wide strips enlarged ~9×; the prompts were designed after seeing Cosmos's answers on vials 7 and 13, then frozen before the full run.
+
 ### Cosmos groundwork (Oct 13)
 
 
@@ -234,13 +242,10 @@ where $\Delta E_{\text{recipe gap}}$ is the $\Delta E2000$ between the two recip
 
 ## What's next
 
-1. **Human answer key:** one judge so far (`judge_1`); add `judge_2` later and rerun `scripts/baseline_check.py`.
-2. **Card 3, step 2, baseline score:** done (HIGH patch at $\Delta$E > 5 catches carryover vials with 0 false alarms when 'unsure' counts as off (4 when it counts as fine); small vials remain weak).
-3. **Gap list for the organizers:** done (table in `annotations/video5_transitions.csv` and gap list in `docs/organizer-feedback.md`).
-4. **Card 4, flush advisor:** done (`fit_color_map.py`, `fit_residue.py`, `check_measurements.py`, `fit_risk_model.py`, `flush_advisor.py`; risk lights from measured recipe gap; no physical leftover volume reported).
-5. **Cosmos playground test:** try vial 7 (green) in the browser with and without recipe info, and paste the answers into `RUNBOOK.md` (no Brev needed).
-6. **Card 3b, in-context Cosmos check:** test Cosmos on the same 30 vials against the baseline once Cosmos runs on Brev (organizer feedback).
-7. **Decide on training:** start Cards 7-8 (twin-trained model) only if steps 2-6 aren't good enough.
+1. **Card 3b, in-context Cosmos check:** done (color math beat every Cosmos version; color check decides pass/fail, Cosmos explains).
+2. **Card 6, first twin render:** render 10 images from the twin's `vial_fill` camera on Brev, compare angle and vial position with a real frame; decides whether Cards 7–8 are feasible.
+3. **Card 9, explanations:** explain flagged vials with Cosmos (version C: flagged vial crop + reference image + recipe info + measured $\Delta$E and flush prediction), with explanations scored.
+4. **Card 10, dashboard:** operator interface integrating the flush advisor, camera color check, and Cosmos explanations (`PLAN.md`).
 
 ## Words used here
 
