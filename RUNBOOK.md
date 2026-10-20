@@ -367,9 +367,13 @@ Write your final answer immediately after the </think> tag.
 ```
 
 ### Cosmos: start the server (on Brev, App + Cosmos lead)
-The build.nvidia.com page has no hosted Python example for Cosmos 3; its **Deploy** tab shows how to run it yourself as a NIM container. Cosmos 3 Nano needs about 17 GB of GPU memory, so it runs on a Brev **L40S** instance named `fluid-cosmos` (AWS, with Start/Stop).
+The build.nvidia.com page has no hosted Python example for Cosmos 3; its **Deploy** tab shows how to run it yourself as a NIM container. Cosmos 3 Nano needs about 17 GB of GPU memory, so it runs on a Brev **L40S** instance named `fluid-cosmos` (with Start/Stop).
 
-1. Connect: `brev shell fluid-cosmos`, then check the GPU works inside Docker (first session only):
+**What worked (Oct 20):** Nebius L40S, *VM Mode w/ Jupyter* (no launchable needed). Everything below runs in a JupyterLab terminal (Brev website → Open Notebook → File → New → Terminal), so no Brev CLI is needed on the laptop.
+**Check the driver first:** run `nvidia-smi | head -4` as soon as the instance is Running. The Cosmos container needs **CUDA Version 12.9 or higher** (Nebius showed driver 580, CUDA 13.0). A Crusoe L40S had CUDA 12.7 and Cosmos crashed with "The NVIDIA driver on your system is too old"; its driver could not be upgraded, so delete such an instance and pick another provider.
+**Next sessions:** Start the instance → Open Notebook → Terminal → `docker start cosmos` → wait for the ready check in step 3.
+
+1. Open a terminal on the instance (JupyterLab terminal, or `brev shell fluid-cosmos` if you have the CLI), then check the GPU works inside Docker (first session only):
    ```bash
    nvidia-smi                                              # should list one L40S
    docker run --rm --gpus all ubuntu nvidia-smi            # should list the same GPU
@@ -384,8 +388,7 @@ The build.nvidia.com page has no hosted Python example for Cosmos 3; its **Deplo
    export LOCAL_NIM_CACHE=~/.cache/nim
    mkdir -p "$LOCAL_NIM_CACHE"
    chmod -R a+w "$LOCAL_NIM_CACHE"
-   tmux new -s cosmos
-   docker run -it --rm \
+   docker run -d --name cosmos \
        --gpus all \
        --ipc host \
        --shm-size=32GB \
@@ -394,14 +397,15 @@ The build.nvidia.com page has no hosted Python example for Cosmos 3; its **Deplo
        -u $(id -u) \
        -p 8000:8000 \
        nvcr.io/nim/nvidia/cosmos3-reasoner:latest
+   docker logs -f cosmos         # watch it download and start; Ctrl+C stops watching, not the server
    ```
-3. Check it is ready (second Brev terminal): `curl http://127.0.0.1:8000/v1/health/ready`. Then press Ctrl+B, D to leave it running in tmux.
-4. On the laptop, in a terminal you leave open:
+3. Check it is ready (second Brev terminal): `curl http://127.0.0.1:8000/v1/health/ready`. If it refuses to connect, check `docker ps -a`: "Exited" means it crashed; `docker logs cosmos 2>&1 | grep -iE "error|memory|driver"` shows why.
+4. **Where to run scripts that call Cosmos:** easiest is on the instance itself: upload the script and its images in JupyterLab, `python3 -m venv ~/venv && source ~/venv/bin/activate && pip install openai python-dotenv`, and run it there (it reaches Cosmos at 127.0.0.1:8000). Download results with right-click → Download. Only if the laptop itself must reach Cosmos (e.g. a live demo), install the Brev CLI and, on the laptop, in a terminal you leave open:
    ```powershell
    brev port-forward fluid-cosmos --port 8000:8000
    ```
    (Alternative: `ssh -L 8000:localhost:8000 fluid-cosmos`.) Now `http://127.0.0.1:8000` on the laptop reaches Cosmos.
-5. When finished: stop the instance in Brev (`brev stop fluid-cosmos`) and log the hours.
+5. When finished: Stop the instance in the Brev website (or `brev stop fluid-cosmos`), wait for "Stopped", and log the hours.
 
 ### Script: `scripts/ask_cosmos.py`
 - **Purpose:** Sends one or more images (or one `.mp4`) plus a question to Cosmos and prints the answer. It is NVIDIA's cookbook request format turned into a command, and the starting point for `scripts/explain.py` (Card 9).
