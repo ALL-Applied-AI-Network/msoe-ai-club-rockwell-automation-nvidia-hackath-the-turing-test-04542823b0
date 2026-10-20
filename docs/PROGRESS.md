@@ -239,8 +239,10 @@ where $\Delta E_{\text{recipe gap}}$ is the $\Delta E2000$ between the two recip
 3. **Gap list for the organizers:** done (table in `annotations/video5_transitions.csv` and gap list in `docs/organizer-feedback.md`).
 4. **Card 4, flush advisor:** done (`fit_color_map.py`, `fit_residue.py`, `check_measurements.py`, `fit_risk_model.py`, `flush_advisor.py`; risk lights from measured recipe gap; no physical leftover volume reported).
 5. **Cosmos playground test:** try vial 7 (green) in the browser with and without recipe info, and paste the answers into `RUNBOOK.md` (no Brev needed).
-6. **Card 3b, in-context Cosmos check:** test Cosmos on the same 30 vials against the baseline once Cosmos runs on Brev (organizer feedback).
-7. **Decide on training:** start Cards 7-8 (twin-trained model) only if steps 2-6 aren't good enough.
+6. **First Brev session (Cosmos):** start the Cosmos server on `fluid-cosmos`, check it answers, stop the instance.
+7. **Card 10, dashboard:** steps 1–9 of `PLAN.md` need no Brev; step 10 plugs in Cosmos after Card 9.
+8. **Card 3b, in-context Cosmos check:** test Cosmos on the same 30 vials against the baseline once Cosmos runs on Brev (organizer feedback).
+9. **Decide on training:** start Cards 7-8 (twin-trained model) only if steps 2-8 aren't good enough.
 
 ## Words used here
 

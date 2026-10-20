@@ -116,7 +116,7 @@ We use **two** agents. We do **not** use Codex, GPT-6 Astra, or any other agent.
 
 - **Done:** Card 1 (data inventory in RUNBOOK.md; `scripts/show_examples.py` contact sheet), Card 2 (`scripts/align_cameras.py` aligned using `scripts/time_base.py` and MP4 video fallback for vials 25–30; `scripts/plot_time_gaps.py` histogram with 0 vials failing threshold; `scripts/show_aligned_frames.py`; `scripts/find_physical_fills.py`; `scripts/fill_timeline_strip.py`; corrected annotations in `annotations/video5_vial_times_corrected.csv` and `annotations/video5_frame_labels_corrected.csv`), Card 3 steps 1–2 (`scripts/crop_vial.py` with verified LOW, HIGH, and BASE patches and glass edge detection across all 30 vials in `outputs/card3/crop_check_all30.png`; `annotations/video5_visual_verdicts.csv`; baseline scoring in `scripts/baseline_check.py`: HIGH patch at ΔE > 5 catches the carryover vials the judge marked off/unsure, with 0 false alarms when the judge's 'unsure' counts as off (4 when it counts as fine); small vials remain weak), and transitions gap list (`scripts/list_transitions.py`, `annotations/video5_transitions.csv`, and gap analysis in `docs/organizer-feedback.md`). Cosmos template `scripts/ask_cosmos.py` added, and Card 4 (`scripts/fit_color_map.py`, `fit_residue.py`, `check_measurements.py`, `fit_risk_model.py`, `flush_advisor.py`; risk lights from the measured recipe gap; no physical leftover volume reported).
 - **Time base rule:** Label `start_s` and `end_s` in `video5_vial_recipes.csv` are in MP4 playback seconds (30.0 fps container rate). Still-image file timestamps are in real wall-clock time (camera recorded at ~24.676 fps). Always convert between them using `scripts/time_base.py` (`mp4_to_real()`, `real_to_mp4()`). Never use `data/.../video5_frame_labels.csv` for vial numbers; use `annotations/video5_vial_times_corrected.csv` or `annotations/video5_frame_labels_corrected.csv`.
-- **Next:** Cosmos playground test (no Brev needed), then Card 3b once Cosmos runs on Brev.
+- **Next:** Cosmos playground test (no Brev needed); first Brev session for Cosmos (`fluid-cosmos`, RUNBOOK.md "Cosmos: start the server"); Card 10 steps 1–9 from `PLAN.md` (no Brev needed); then Card 3b once Cosmos runs on Brev.
 - **The story so far, in plain English with the reasons:** `docs/PROGRESS.md`. After finishing any card, add a section there (what we did, what we found, why we did it that way) and update this list.
 
 ---
@@ -128,6 +128,7 @@ We use **two** agents. We do **not** use Codex, GPT-6 Astra, or any other agent.
 ├── CLAUDE.md            # Claude Code's memory file; imports GEMINI.md
 ├── README.md            # Organizers' event info + our project summary
 ├── RUNBOOK.md           # Dataset inventory and every command that works
+├── PLAN.md              # Claude's step-by-step plan for the current planned card (now Card 10)
 ├── requirements.txt     # Python packages for the laptop environment
 ├── .env.example         # Template for .env (copy it; never commit .env)
 ├── docs/

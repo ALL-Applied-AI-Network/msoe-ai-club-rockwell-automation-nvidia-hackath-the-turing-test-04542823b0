@@ -369,11 +369,18 @@ Write your final answer immediately after the </think> tag.
 ### Cosmos: start the server (on Brev, App + Cosmos lead)
 The build.nvidia.com page has no hosted Python example for Cosmos 3; its **Deploy** tab shows how to run it yourself as a NIM container. Cosmos 3 Nano needs about 17 GB of GPU memory, so it runs on a Brev **L40S** instance named `fluid-cosmos` (AWS, with Start/Stop).
 
-1. Connect: `brev shell fluid-cosmos`
+1. Connect: `brev shell fluid-cosmos`, then check the GPU works inside Docker (first session only):
+   ```bash
+   nvidia-smi                                              # should list one L40S
+   docker run --rm --gpus all ubuntu nvidia-smi            # should list the same GPU
+   df -h ~                                                 # the model needs tens of GB free
+   ```
+   If the second command fails, ask the agent on the instance to install the NVIDIA Container Toolkit for Docker.
 2. On the instance (first time downloads the model; later starts are quick):
    ```bash
    docker login nvcr.io          # Username: $oauthtoken   Password: your NVIDIA API key
-   export NGC_API_KEY=<your NVIDIA API key>
+   read -s NGC_API_KEY           # paste your NVIDIA API key, press Enter (nothing shows; keeps it out of shell history)
+   export NGC_API_KEY
    export LOCAL_NIM_CACHE=~/.cache/nim
    mkdir -p "$LOCAL_NIM_CACHE"
    chmod -R a+w "$LOCAL_NIM_CACHE"
