@@ -187,6 +187,21 @@ where $\Delta E_{\text{recipe gap}}$ is the $\Delta E2000$ between the two recip
 - **Why the advisor shows lights, not exact numbers:** Predicted $\Delta E$ values are rough estimates (individual LOTO errors deviate by up to $\sim 13\ \Delta E$ on HIGH, e.g. on 7→8 and 13→14). Therefore, the flush advisor outputs the traffic light (GREEN, AMBER, RED) and recommended operator action rather than pretending the numerical $\Delta E$ is exact.
 - **Physical meaning of $\alpha$:** An $\alpha$ of $\approx 0.67\text{--}0.69$ means the first vial's color error is about two-thirds of the whole gap between the recipes, i.e. the first vial looks more like the old recipe than the new one. That is surprisingly large for a small pipe leftover (see step 2) and is an open question for the organizers. (Note: this describes the color position on the camera, not that "two-thirds of the liquid carries over").
 
+### Card 4, step 4 · Flush advisor (Oct 20)
+
+**What we built:** `scripts/flush_advisor.py`, an operator tool that evaluates any queued sequence of recipe IDs before dispensing begins, using clean 3rd-vial reference measurements and the fitted risk model slopes.
+
+- **What it prints:** For every change in the queue, it prints the recipe change, the patch used (HIGH if both recipes are $\ge 60$ mL, else LOW), the recipe color gap $\Delta E$, the risk light (GREEN, AMBER, RED), and the plain-English operator action:
+  - GREEN ($< 2\ \Delta E$): `"proceed"`
+  - AMBER ($2\text{--}5\ \Delta E$): `"proceed and flag the first vial for inspection"`
+  - RED ($> 5\ \Delta E$): `"flush or reorder; a flush needs the plant manager's approval, and its effect isn't measured yet (no flush in our data)"`
+- **Playbook test checks:**
+  - `6 -> 7`: RED (LOW patch, recipe gap $\Delta E = 30.1$, flags high risk of carryover discoloration).
+  - `7 -> 7`: GREEN (HIGH patch, recipe gap $\Delta E = 0.0$, proceeds cleanly).
+  - `8 -> 9`: AMBER (HIGH patch, recipe gap $\Delta E = 6.4$, flags for inspection).
+- **Conservative reordering advice:** The advisor evaluates all queue permutations (holding the current station state fixed via `--after`). It suggests an alternative order **only** if that order strictly reduces the number of RED changes, or keeps REDs equal while reducing AMBERs. It never suggests a reorder based on tiny numerical score differences, as predicted $\Delta E$ can vary by $\sim 13\ \Delta E$. For example, with queue `7 12 8 --after 6`, it suggests `12 -> 8 -> 7` (reducing RED changes from 3 to 2). When no permutation eliminates a RED change (e.g. `11 12 13 --after 10`), it explicitly advises: `"No order removes a red change; consider a flush (needs the plant manager's approval)."`
+- **Flush effects unmeasured:** The tool explicitly reminds the user that a flush requires plant manager approval and that its cleaning effect has not been measured yet, as Video 5 contains no flush sequences.
+
 ### Cosmos groundwork (Oct 13)
 
 
@@ -222,10 +237,10 @@ where $\Delta E_{\text{recipe gap}}$ is the $\Delta E2000$ between the two recip
 1. **Human answer key:** one judge so far (`judge_1`); add `judge_2` later and rerun `scripts/baseline_check.py`.
 2. **Card 3, step 2, baseline score:** done (HIGH patch at $\Delta$E > 5 catches carryover vials with 0 false alarms when 'unsure' counts as off (4 when it counts as fine); small vials remain weak).
 3. **Gap list for the organizers:** done (table in `annotations/video5_transitions.csv` and gap list in `docs/organizer-feedback.md`).
-4. **Card 4, flush advisor:** fit pipe residue volume $V_r$, build the dye-to-color map $g$, and predict risk on any recipe queue.
-5. **Card 3b, in-context Cosmos check:** test Cosmos on the same 30 vials against the baseline once Cosmos is running on Brev (needs Cosmos running on Brev; organizer feedback).
-6. **Decide on training:** start Cards 7–8 (twin-trained model) only if steps 2–5 aren't good enough.
-7. **Cosmos playground test:** try vial 7 (green) in the browser with and without recipe info, and paste the answers into `RUNBOOK.md`.
+4. **Card 4, flush advisor:** done (`fit_color_map.py`, `fit_residue.py`, `check_measurements.py`, `fit_risk_model.py`, `flush_advisor.py`; risk lights from measured recipe gap; no physical leftover volume reported).
+5. **Cosmos playground test:** try vial 7 (green) in the browser with and without recipe info, and paste the answers into `RUNBOOK.md` (no Brev needed).
+6. **Card 3b, in-context Cosmos check:** test Cosmos on the same 30 vials against the baseline once Cosmos runs on Brev (organizer feedback).
+7. **Decide on training:** start Cards 7-8 (twin-trained model) only if steps 2-6 aren't good enough.
 
 ## Words used here
 

@@ -334,6 +334,22 @@ First time only, install the packages: `pip install -r requirements.txt`
 
 ---
 
+### Script: `scripts/flush_advisor.py` (Card 4 Step 4: Carryover Flush Advisor)
+- **Purpose:** Predicts carryover risk for any queued sequence of recipe IDs before dispensing starts, using measured clean 3rd-vial reference colors and the fitted physical risk model. Evaluates each recipe change (HIGH patch if both $\ge 60$ mL, else LOW patch), assigns risk lights (GREEN $<2$, AMBER $2\text{--}5$, RED $>5$), and prints plain-English operator actions. Evaluates all queue permutations (holding `--after` fixed if provided) and suggests an alternative order only if it removes a RED change (or reduces AMBERs). Flags when a flush is needed.
+- **Run order:**
+  1. `python scripts/baseline_check.py` (generates `outputs/card3/baseline_results.csv`)
+  2. `python scripts/fit_risk_model.py` (generates `outputs/card4/risk_model.json`)
+  3. `python scripts/flush_advisor.py <recipe_queue> [--after <current_recipe>]`
+- **Run command example:**
+  ```powershell
+  python scripts/flush_advisor.py 7 12 8 --after 6
+  ```
+- **Console output:**
+  - Per-transition checks: patch used, recipe color gap $\Delta E$, risk light, and operator action.
+  - Reordering advice: suggested order if it reduces REDs or AMBERs; otherwise confirms current order is optimal or recommends a flush if RED changes remain.
+
+---
+
 
 ## 3. Cosmos Reason (Cosmos 3 Nano Reasoner)
 
