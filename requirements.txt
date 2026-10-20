@@ -8,3 +8,4 @@ scikit-learn       # simple machine-learning tools
 colour-science     # CIELAB colors and Delta-E color differences
 python-dotenv      # load settings and keys from .env
 openai             # client library for Cosmos's OpenAI-compatible API (scripts/ask_cosmos.py)
+streamlit          # operator dashboard and demo replay UI (app/dashboard.py)
