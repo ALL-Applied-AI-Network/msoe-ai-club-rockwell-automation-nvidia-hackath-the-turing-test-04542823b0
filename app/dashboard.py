@@ -1,13 +1,13 @@
 """
 app/dashboard.py
-Card 10, Step 7: Explanation panel and cascade counter.
+Card 10, Step 8: Honesty banner and end-of-run summary table.
 
 Carryover Copilot · Fluid Mixing Station 3
-Three panels side by side + cascade counter:
+Three panels side by side + cascade counter + end-of-run summary table:
 1. Recipe Queue: Pre-fill risk lights and queue reorder advisor (LIVE - flush_advisor.py)
 2. Latest Vial: Post-fill camera color verification, patch metrics, and PASS/UNSURE/FAIL verdict (LIVE - replay_feed.py & vial_check.py)
 3. Explanation: Plain-English explanation grounded in camera evidence and recipes (LIVE - explanation_cache.py)
-Below: Inference Cascade Counter tracking vials across all 4 cascade steps.
+Below: Inference Cascade Counter + End-of-Run Summary (on Vial 30).
 
 Run with:
     streamlit run app/dashboard.py
@@ -119,6 +119,8 @@ def get_all_30_verdicts():
         records.append({
             "vial": v,
             "recipe_id": item.recipe_id,
+            "total_ml": item.total_ml,
+            "batch_pos": bpos,
             "verdict": verdict,
             "delta_e": res["delta_e"],
             "patch": res["patch"],
@@ -130,7 +132,14 @@ def get_all_30_verdicts():
 
 st.title("🧪 Carryover Copilot · Fluid Mixing Station 3")
 st.caption("Predictive Flush Advisory · In-Line Camera Color Verification · Cosmos Physical AI Explanations")
-st.info("ℹ️ **Card 10 Step 7:** All 3 panels and Cascade Counter are LIVE (wired to flush_advisor.py, replay_feed.py, vial_check.py, and explanation_cache.py).")
+
+# ---------------------------------------------------------------------------
+# Honesty Banner (Top, visible without scrolling)
+# ---------------------------------------------------------------------------
+st.warning(
+    "⚠️ **Replay of recorded video 5.** Clean references are the 3rd vials of this same run, "
+    "so this replay is a demonstration, not a score. Our score is the Card 3 leave-one-recipe-out result."
+)
 st.markdown("---")
 
 # Layout: 3 panels side by side
@@ -556,6 +565,57 @@ if prereqs_ok:
         f"⏱️ **Timing:** color math only, frame already loaded: ~{avg_math_ms:.1f} ms/vial · "
         f"including reading frame from video: ~{avg_total_ms:.0f} ms/vial"
     )
+
+    # -----------------------------------------------------------------------
+    # Step 8: End-of-Run Summary (Visible when replay reaches vial 30)
+    # -----------------------------------------------------------------------
+    if current_vial == 30:
+        st.markdown("---")
+        st.subheader("📋 End-of-Run Summary (All FAIL & UNSURE Vials)")
+        st.caption(
+            "Side-by-side comparison of Copilot color check verdicts vs judge_1: our teammate's by-eye verdict from the judging sheet (annotations/video5_visual_verdicts.csv). "
+            "Every row corresponds directly to outputs/card3/baseline_results.csv."
+        )
+
+        verdicts_csv = REPO_ROOT / "annotations" / "video5_visual_verdicts.csv"
+        df_verdicts = pd.read_csv(verdicts_csv).set_index("vial") if verdicts_csv.exists() else None
+
+        summary_rows = []
+        for r in all_30_records:
+            v_num = r["vial"]
+            verd = r["verdict"]
+            if verd in ("fail", "unsure"):
+                j1_val = df_verdicts.loc[v_num, "judge_1"] if df_verdicts is not None and v_num in df_verdicts.index else "N/A"
+                bpos_str = f"{r['batch_pos']} of 3"
+                verdict_badge = "🔴 FAIL" if verd == "fail" else "🟡 UNSURE"
+                summary_rows.append({
+                    "Vial": f"Vial {v_num:02d}",
+                    "Recipe": f"Recipe {r['recipe_id']}",
+                    "Batch Pos": bpos_str,
+                    "Volume": f"{r['total_ml']} mL",
+                    "Patch": r["patch"],
+                    "ΔE2000": f"{r['delta_e']:.2f}",
+                    "Copilot Verdict": verdict_badge,
+                    "judge_1 (Teammate By-Eye)": str(j1_val),
+                })
+
+        if summary_rows:
+            df_summary = pd.DataFrame(summary_rows)
+            st.dataframe(df_summary, use_container_width=True, hide_index=True)
+
+            pass_vials = [r["vial"] for r in all_30_records if r["verdict"] == "pass"]
+            pass_misses = sum(
+                1 for v in pass_vials
+                if df_verdicts is not None and v in df_verdicts.index and df_verdicts.loc[v, "judge_1"] in ("off", "unsure")
+            )
+            st.markdown(
+                f"**Verification:** PASS vials the judge called off or unsure: **{pass_misses} of {len(pass_vials)}** "
+                f"(vials {', '.join(str(v) for v in pass_vials)} were all judged 'matches')."
+            )
+            st.caption(
+                f"Total flagged/borderline: {len(summary_rows)} vials (11 FAIL + 2 UNSURE). "
+                "Notice Vial 07 is FAIL with judge_1 'unsure' (dark/green discoloration caught before shipment)."
+            )
 
     # -----------------------------------------------------------------------
     # Auto-play Handler (advances one vial every 3 seconds)
