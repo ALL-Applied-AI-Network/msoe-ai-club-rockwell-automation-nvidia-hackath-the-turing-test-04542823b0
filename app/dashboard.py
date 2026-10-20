@@ -1,12 +1,13 @@
 """
 app/dashboard.py
-Card 10, Step 6: Vial replay panel wired to replay_feed.py and vial_check.py.
+Card 10, Step 7: Explanation panel and cascade counter.
 
 Carryover Copilot · Fluid Mixing Station 3
-Three panels side by side:
+Three panels side by side + cascade counter:
 1. Recipe Queue: Pre-fill risk lights and queue reorder advisor (LIVE - flush_advisor.py)
 2. Latest Vial: Post-fill camera color verification, patch metrics, and PASS/UNSURE/FAIL verdict (LIVE - replay_feed.py & vial_check.py)
-3. Explanation: Plain-English explanation grounded in camera evidence and recipes (example text until Step 7)
+3. Explanation: Plain-English explanation grounded in camera evidence and recipes (LIVE - explanation_cache.py)
+Below: Inference Cascade Counter tracking vials across all 4 cascade steps.
 
 Run with:
     streamlit run app/dashboard.py
@@ -18,6 +19,7 @@ import time
 import itertools
 import cv2
 import numpy as np
+import pandas as pd
 import streamlit as st
 
 # Add scripts folder to sys.path so we can import project modules cleanly
@@ -36,6 +38,7 @@ from flush_advisor import (
 )
 from replay_feed import get_vial, VialFeedItem, DEFAULT_TIMES_CSV, DEFAULT_VIDEO_MP4
 from vial_check import check_vial, load_references, HIGH_PATCH, LOW_PATCH
+from explanation_cache import get as get_explanation
 
 st.set_page_config(
     page_title="Carryover Copilot · Fluid Mixing Station 3",
@@ -71,9 +74,63 @@ def get_cached_vial_references():
     return load_references()
 
 
+# Cache recipe composition descriptions (e.g. "10 mL orange + 30 mL clear")
+@st.cache_data
+def get_cached_recipe_descriptions():
+    rec_csv = REPO_ROOT / "data/csi-vial-fill-dataset/vial_fill/labels/video5_vial_recipes.csv"
+    if not rec_csv.exists():
+        return {}
+    df = pd.read_csv(rec_csv).set_index("vial")
+    lookup = {}
+    for v in df.index:
+        r_id = int(df.loc[v, "recipe_id"])
+        if r_id not in lookup:
+            t100 = 0 if pd.isna(df.loc[v, "t100_ml"]) else int(df.loc[v, "t100_ml"])
+            t200 = 0 if pd.isna(df.loc[v, "t200_ml"]) else int(df.loc[v, "t200_ml"])
+            t400 = 0 if pd.isna(df.loc[v, "t400_ml"]) else int(df.loc[v, "t400_ml"])
+            parts = []
+            if t200 > 0:
+                parts.append(f"{t200} mL orange")
+            if t400 > 0:
+                parts.append(f"{t400} mL blue")
+            if t100 > 0:
+                parts.append(f"{t100} mL clear")
+            lookup[r_id] = " + ".join(parts)
+    return lookup
+
+
+# Precompute & cache verdicts and color check duration across all 30 vials
+@st.cache_data
+def get_all_30_verdicts():
+    refs = load_references()
+    records = []
+    math_durations = []
+    total_durations = []
+    for v in range(1, 31):
+        t_tot0 = time.perf_counter()
+        item = get_vial(v, with_frame=True)
+        bpos = ((v - 1) % 3) + 1
+        is_ref = (bpos == 3)
+        t_math0 = time.perf_counter()
+        res = check_vial(item.frame, item.recipe_id, item.total_ml, refs, is_reference=is_ref)
+        math_durations.append((time.perf_counter() - t_math0) * 1000)
+        total_durations.append((time.perf_counter() - t_tot0) * 1000)
+        verdict = "reference" if is_ref else res["verdict"]
+        records.append({
+            "vial": v,
+            "recipe_id": item.recipe_id,
+            "verdict": verdict,
+            "delta_e": res["delta_e"],
+            "patch": res["patch"],
+        })
+    avg_math_ms = sum(math_durations) / len(math_durations) if math_durations else 0.7
+    avg_total_ms = sum(total_durations) / len(total_durations) if total_durations else 75.0
+    return records, avg_math_ms, avg_total_ms
+
+
 st.title("🧪 Carryover Copilot · Fluid Mixing Station 3")
 st.caption("Predictive Flush Advisory · In-Line Camera Color Verification · Cosmos Physical AI Explanations")
-st.info("ℹ️ **Card 10 Step 6:** Panels 1 & 2 are LIVE (wired to flush_advisor.py, replay_feed.py, and vial_check.py). Panel 3 shows example text until Step 7.")
+st.info("ℹ️ **Card 10 Step 7:** All 3 panels and Cascade Counter are LIVE (wired to flush_advisor.py, replay_feed.py, vial_check.py, and explanation_cache.py).")
 st.markdown("---")
 
 # Layout: 3 panels side by side
@@ -92,6 +149,10 @@ if prereqs_ok:
     advisor_refs = load_clean_references()
     high_alpha, low_alpha = load_risk_alphas()
     vial_refs = get_cached_vial_references()
+    recipe_descriptions = get_cached_recipe_descriptions()
+    all_30_records, avg_math_ms, avg_total_ms = get_all_30_verdicts()
+
+    df_times = pd.read_csv(DEFAULT_TIMES_CSV).set_index("vial")
 
     # Determine current vial and active change
     current_vial = st.session_state.vial_index
@@ -331,11 +392,6 @@ if prereqs_ok:
             if current_item.previous_vial_recipe is not None
             else "unknown (recording starts here)"
         )
-        batch_p_text = (
-            f"Recipe {current_item.batch_previous_recipe}"
-            if current_item.batch_previous_recipe is not None
-            else "unknown (recording starts here)"
-        )
         ref_vial_num = vial_refs[current_item.recipe_id]["reference_vial"]
         ref_note = " *(self-reference)*" if is_reference else ""
 
@@ -367,29 +423,139 @@ if prereqs_ok:
             st.caption("Threshold rule: pass < 2.0, unsure 2.0–5.0, fail > 5.0")
 
     # -----------------------------------------------------------------------
-    # Panel 3: Explanation (placeholder text until Step 7)
+    # Panel 3: Cosmos Explanation (LIVE)
     # -----------------------------------------------------------------------
     with col_expl:
         st.subheader("3. Cosmos Explanation")
-        st.caption("*(EXAMPLE TEXT, NOT LIVE — live explanation cache arrives in Step 7)*")
-        st.markdown("#### Status: Flagged Vial Discoloration Analysis *(EXAMPLE TEXT, NOT LIVE)*")
+        st.caption("Physical AI Carryover Diagnosis · Grounded in Camera Evidence")
 
-        st.markdown("##### 🔍 Likely Cause: *(EXAMPLE TEXT, NOT LIVE)*")
-        st.warning("Carryover from Recipe 6 (orange dye) tinted the initial Recipe 7 fill (blue dye), producing green liquid.\n\n*(EXAMPLE TEXT, NOT LIVE)*")
+        # 1. Clean reference vials: no carryover explanation needed
+        if is_reference:
+            st.info("### ⚪ Reference vial (not checked)")
+            st.caption("Clean 3rd vial of this recipe: used as clean baseline reference, not checked for carryover.")
 
-        st.markdown("##### 🛠️ Operator Action: *(EXAMPLE TEXT, NOT LIVE)*")
-        st.success("Quarantine vial 7 and verify vial 8 is clear blue before continuing production.\n\n*(EXAMPLE TEXT, NOT LIVE)*")
+        # 2. PASS vials: within spec
+        elif vial_res["verdict"] == "pass":
+            st.success("### 🟢 No explanation needed")
+            st.caption(f"Liquid color matches Recipe {current_item.recipe_id} specification (ΔE = {vial_res['delta_e']:.2f} < 2.0).")
 
-        st.markdown("---")
-        st.markdown("##### 📋 Physical Camera Evidence: *(EXAMPLE TEXT, NOT LIVE)*")
-        st.markdown(
-            "*(EXAMPLE TEXT, NOT LIVE)*\n"
-            "- **Intended Recipe:** Recipe 7 (`50 mL blue + 20 mL clear`)\n"
-            "- **Previous Recipe:** Recipe 6 (`10 mL orange + 30 mL clear`)\n"
-            "- **Observed Color Shift:** Measured Lab `[16.0, -14.2, 4.6]` vs Reference Lab `[34.1, -8.3, -26.0]`\n"
-            "- **Color Distance:** ΔE2000 = **25.55** on HIGH patch (y 268–288)\n"
-            "- **Camera Frame:** Frame 9283 (`vial_fill_video_5.mp4`, t = 309.43 s)"
+        # 3. UNSURE vials: borderline
+        elif vial_res["verdict"] == "unsure":
+            st.warning("### 🟡 Check by eye (vial model not built)")
+            st.caption("Borderline color difference (2.0 ≤ ΔE ≤ 5.0). Small synthetic-trained vial model (Cascade Step 3) not built.")
+
+        # 4. FAIL vials: carryover investigation
+        else:
+            if current_vial == 1:
+                st.warning("### ⚪ No explanation: the recipe before vial 1 is unknown (the recording starts here)")
+            else:
+                # Look up cached explanation using batch_previous_recipe -> recipe_id
+                prev_batch_r = current_item.batch_previous_recipe
+                target_r = current_item.recipe_id
+                cached_exp = get_explanation(prev_batch_r, target_r)
+
+                if cached_exp:
+                    st.markdown("#### 🔍 Likely Cause:")
+                    st.warning(f"**{cached_exp.get('likely_cause', '')}**")
+
+                    st.markdown("#### 🛠️ Operator Action:")
+                    st.success(f"**{cached_exp.get('operator_action', '')}**")
+                else:
+                    st.warning("### ⚠️ Explanation unavailable (Cosmos not running)")
+                    st.caption("Cosmos NIM reasoner server not connected or explanation not cached yet.")
+
+        # Evidence line (shown for FAIL, UNSURE, and checked vials)
+        if not is_reference:
+            rec_desc = recipe_descriptions.get(current_item.recipe_id, "")
+            rec_desc_str = f" (`{rec_desc}`)" if rec_desc else ""
+
+            # Check if 2nd vial of batch
+            if batch_pos == 2:
+                intended_str = f"Recipe {current_item.recipe_id}{rec_desc_str} — *2nd vial of the batch*"
+            else:
+                intended_str = f"Recipe {current_item.recipe_id}{rec_desc_str}"
+
+            if current_vial == 1:
+                prev_recipe_str = "unknown (recording starts here)"
+            else:
+                p_batch = current_item.batch_previous_recipe
+                p_desc = recipe_descriptions.get(p_batch, "")
+                p_desc_str = f" (`{p_desc}`)" if p_desc else ""
+                prev_recipe_str = f"Recipe {p_batch}{p_desc_str} (batch previous recipe before Recipe {current_item.recipe_id})"
+
+            measured_lab_str = f"[{vial_res['measured_lab'][0]:.1f}, {vial_res['measured_lab'][1]:.1f}, {vial_res['measured_lab'][2]:.1f}]"
+            ref_lab_str = f"[{vial_res['reference_lab'][0]:.1f}, {vial_res['reference_lab'][1]:.1f}, {vial_res['reference_lab'][2]:.1f}]"
+            frame_idx = int(df_times.loc[current_vial, "last_parked_frame"])
+            patch_span = "y 268–288" if vial_res["patch"] == "HIGH" else "y 352–372"
+
+            st.markdown("---")
+            st.markdown("##### 📋 Physical Camera Evidence:")
+            st.markdown(
+                f"- **Intended Recipe:** {intended_str}\n"
+                f"- **Previous Recipe:** {prev_recipe_str}\n"
+                f"- **Observed Color Shift:** Measured Lab `{measured_lab_str}` vs Reference Lab `{ref_lab_str}`\n"
+                f"- **Color Distance:** ΔE2000 = **{vial_res['delta_e']:.2f}** on `{vial_res['patch']}` patch ({patch_span})\n"
+                f"- **Camera Frame:** Frame {frame_idx} (`vial_fill_video_5.mp4`, t = {current_item.mp4_time:.2f} s)"
+            )
+
+    # -----------------------------------------------------------------------
+    # Inference Cascade Counter
+    # -----------------------------------------------------------------------
+    st.markdown("---")
+    st.subheader("📊 Inference Cascade Counter")
+    st.caption("Cascade execution metrics across Video 5 sequence · Cheap math first, AI only when needed")
+
+    # Metrics replayed so far (up to current_vial)
+    so_far_records = all_30_records[:current_vial]
+    n_refs_so_far = sum(1 for r in so_far_records if r["verdict"] == "reference")
+    n_prod_so_far = len(so_far_records) - n_refs_so_far
+    n_pass_so_far = sum(1 for r in so_far_records if r["verdict"] == "pass")
+    n_unsure_so_far = sum(1 for r in so_far_records if r["verdict"] == "unsure")
+    n_fail_so_far = sum(1 for r in so_far_records if r["verdict"] == "fail")
+
+    cnt_col1, cnt_col2, cnt_col3, cnt_col4, cnt_col5 = st.columns(5)
+
+    with cnt_col1:
+        st.metric(
+            "Step 1 · Pre-Fill",
+            f"{min(current_vial, 9)} / 9 Changes",
+            "100% queue advisory",
         )
+    with cnt_col2:
+        st.metric(
+            "Step 2 · Color-Checked",
+            f"{n_prod_so_far} / 20 Vials",
+            f"{n_pass_so_far} passed",
+        )
+    with cnt_col3:
+        st.metric(
+            "Reference Vials",
+            f"{n_refs_so_far} / 10 Vials",
+            "Clean 3rd (not checked)",
+        )
+    with cnt_col4:
+        st.metric(
+            "Step 3 · Unsure Zone",
+            f"{n_unsure_so_far} / 2 Vials",
+            "Borderline (eye check)",
+        )
+    with cnt_col5:
+        st.metric(
+            "Step 4 · Explanation",
+            f"{n_fail_so_far} / 11 Vials",
+            "Flagged for Cosmos",
+        )
+
+    st.markdown(
+        f"**Run Throughput:** Progress: Vial **{current_vial} of 30** replayed · "
+        f"**Reference vials (10)** (clean 3rd vials; not checked) · "
+        f"20 production vials color-checked: **{n_pass_so_far} PASS**, **{n_unsure_so_far} UNSURE** · "
+        f"**Flagged for explanation: {n_fail_so_far}** (10 with a known recipe change, 1 with unknown previous recipe)"
+    )
+    st.caption(
+        f"⏱️ **Timing:** color math only, frame already loaded: ~{avg_math_ms:.1f} ms/vial · "
+        f"including reading frame from video: ~{avg_total_ms:.0f} ms/vial"
+    )
 
     # -----------------------------------------------------------------------
     # Auto-play Handler (advances one vial every 3 seconds)
