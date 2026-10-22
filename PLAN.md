@@ -1,116 +1,112 @@
-# PLAN: Card 10 · Cascade and operator dashboard
+# PLAN: Card 7 · Calibrated twin renders for the small vials
 
 Written by Claude Code for Gemini to carry out, **one step per prompt**. Each step says what to ask, how to check it worked, and what to commit. Do the steps in order; don't start a step until the one before it passes its check.
 
-**How to use this file:** tell Gemini *"Read GEMINI.md and PLAN.md. Do step N only, then tell me how to check it."* After the check passes, commit with the message given in that step.
+**How to use this file:** on the Brev instance, start `agy` inside `/workspace/project/repo` (after `git pull` or a fresh repo copy) and say *"Read GEMINI.md and PLAN.md. Do Card 7 step N only, then tell me how to check it."* Laptop steps are marked **(laptop)**.
+
+Card 10's remaining step (Cosmos explanations in the dashboard) is at the bottom of this file.
 
 ---
 
-## What we are building, in one paragraph
+## Why Card 7, in one paragraph
 
-A Streamlit web page (`app/dashboard.py`) that replays video 5 as if it were live and shows the whole system working: (1) the recipe queue with a green/amber/red light for each recipe change, from `scripts/flush_advisor.py`; (2) each vial as it finishes filling, with its crop and verdict from the color check; (3) a plain-language explanation for flagged vials, from Cosmos once it runs on Brev (until then, "explanation unavailable"). This is the screen the judges watch in the video.
+Card 3b showed the color check already works on tall vials (8 of 8 caught, 0 false alarms). The one real gap is the **30–40 mL vials** (Recipes 5 and 6), where the liquid never reaches the good HIGH patch and only the weaker LOW patch works. The twin can do exactly what video 5 can't: show the same vial at **any fill height, dye mix, lighting and glare**. Card 7 makes the twin's liquid controllable, calibrates its colors against the real clean vials, and renders a labeled image set for Card 8. The twin varies **appearance only**; it does not simulate carryover (organizer feedback).
+
+## Ideas this plan builds on
+
+- **Blank normalization** (teammate's idea, tested in `scripts/blank_check.py`): measure every liquid patch **relative to the empty vial in the next holder, at the same height**, like a lab blank. On video 5 it caught exactly the same vials as the raw check, and it cancels any even change in brightness. Both the twin and the real camera have that empty neighbour vial in view, so twin and real are compared in this blank-relative space. If the neighbour pocket is empty, use the median blank of the run (`blank_fallback`).
+- **The anchored gradient** (same teammate): absorbance relative to the blank grows in a straight line with each dye's amount, starting from zero at the empty vial. Calibrating the twin means matching each dye's strength, a handful of numbers.
+- **Automatic calibration loop** (same teammate's "reward and penalty" idea): render, measure the color error against the real vial, correct the dye strengths along the gradient, repeat a few times.
+- **Mixing state** (same teammate's "flow" idea): some real first vials look layered (darker at the bottom; `outputs/card4/first_vial_strips.png`). The renders include a controllable "mixing state", from evenly mixed to layered, so a model learns layered vials too.
 
 ## Ground rules for every step
 
-- **The app stays thin.** All logic lives in small scripts in `scripts/` (one job each, each runnable on its own); `app/dashboard.py` only imports them and draws the page. To import from `scripts/`, the app adds the `scripts/` folder to `sys.path`.
-- **Reuse, don't rewrite.** Frame reading comes from the code in `scripts/baseline_check.py` (it seeks to `last_parked_frame` from `annotations/video5_vial_times_corrected.csv`); patch colors from `scripts/crop_vial.py`; lights and reorder advice from `evaluate_transition()` and `evaluate_order()` in `scripts/flush_advisor.py`.
-- **Same cut points everywhere:** ΔE below 2 green/pass, 2–5 amber/unsure, above 5 red/fail. Never tune them on video 5.
-- **Be honest on screen.** The replay uses the labeled fill times and the 3rd vials of this same run as references, so the replay is a **demo, not a score**. The score is Card 3's leave-one-recipe-out result. The page must say so (step 8).
-- **Detection never depends on Cosmos.** If Cosmos is off or fails, the page still shows every light and verdict.
-- **Debug images go in `scratch/`, results in `outputs/card10/`.** Nothing in `data/`, `outputs/` or `scratch/` is committed.
-
-## The cascade on this page
-
-| Step | What runs | Built in | Status for the demo |
-| --- | --- | --- | --- |
-| 1. Before the fill | Risk light for the coming recipe change | Card 4 (`flush_advisor.py`) | Ready |
-| 2. After the fill | Vial color vs. its recipe's clean reference (ΔE2000; HIGH patch if the vial is ≥ 60 mL, else LOW, marked "low confidence") | Card 3 (`baseline_check.py`) | Ready, wrapped in step 1 below |
-| 3. Unsure zone | Twin-trained vial model | Cards 7–8 | **Not built** (only if Card 3b says it's needed). Unsure vials show "check by eye". |
-| 4. Flagged vial | Cosmos explanation, cached per recipe change (e.g. `"6->7"`) | Card 9 | Needs Brev. Step 10 below plugs it in. |
+- **Real images are calibration targets only.** Only the clean **3rd vials** are used to calibrate. The 1st and 2nd vials are Card 8's test set and are never used here.
+- **Where things live on Brev:** `/workspace/project/repo` (our repo copy), `/workspace/project/twin` (twin; never copy it into the repo), `/workspace/project/renders`, `/workspace/project/logs`. No `sudo`, no `docker`, no `tmux`. Isaac Sim's Python is `/isaac-sim/python.sh`; `ACCEPT_EULA=Y` must be set.
+- **Long jobs** run with `nohup … > /workspace/project/logs/<job>.log 2>&1 &`, saving each image as soon as it's rendered, so a closed tab loses little.
+- **Every render script** appends one line (GPU, job, minutes, images) to `outputs/run_log.csv`, so we can report GPU time per 1,000 images.
+- **Never commit from Brev, never run `docker compose down`.** At the end of each session: zip, download, Stop. Commit scripts from the laptop; renders go to `outputs/card7/` on the laptop (ignored by Git) and the team Drive.
+- **Stop rule:** if the same error survives 3 attempts, write `HANDOFF.md` and stop; headless Isaac Sim problems go to Claude.
+- **Time box:** steps 1–5 in one Brev session (about 2 hours); step 6 in a second session.
 
 ---
 
-## Steps 1–9: no Brev needed
+## Step 1 · Find out where the stripes come from (Brev, about 20 min)
 
-### Step 1 · One-vial color check as a reusable function
+> "Read GEMINI.md, PLAN.md and docs/twin-map.md. Card 7 step 1 only. In stations/fill_station/fill_station.usda, find the liquid inside the filling vial: how it's built (one shape or many layers, animated how), and its material. Then render frame 686 from FillCam twice, once with the settings scripts/render_test.py uses and once with 4× more path-tracing samples, to /workspace/project/renders/card7_step1_default.png and card7_step1_more_samples.png. Tell me in plain English what causes the horizontal stripes. Do NOT commit."
 
-> "Read GEMINI.md and PLAN.md. Write scripts/vial_check.py with one job: check one vial against its recipe. It has a function check_vial(frame, recipe_id, total_ml, references) that returns a dict with: patch used (HIGH if total_ml ≥ 60, else LOW), measured Lab, reference Lab, ΔE2000, verdict (pass if ΔE < 2, unsure if 2–5, fail if > 5) and confidence ('normal' for HIGH, 'low' for LOW). Also a function load_references() that builds each recipe's clean reference from its 3rd vial, reusing the patch code from crop_vial.py and the frame reading from baseline_check.py. Add a command line: python scripts/vial_check.py --vial 7 prints the result for one vial, and python scripts/vial_check.py --all prints all 30 and compares each ΔE with outputs/card3/baseline_results.csv. Do NOT commit; show me both outputs."
+**Check:** look at the two images side by side. If the stripes fade with more samples, they are render noise. If they stay, they come from how the liquid is built. Either way, step 3 replaces this liquid.
+**Commit:** nothing yet (the explanation goes into `docs/twin-map.md` in step 8).
 
-**Check:** vial 7 says fail; vial 8 says pass or unsure; `--all` reports that every ΔE matches `baseline_results.csv` (differences below 0.01). The 3rd vials show ΔE 0, because each is its own reference; the output should label them "reference vial".
-**Commit:** `Card 10 step 1: reusable one-vial color check`
+## Step 2 · Put our measurement patches on the twin's image (Brev, about 20 min)
 
-### Step 2 · Replay feed
+> "Card 7 step 2 only. Write scripts/measure_patches.py (one job: measure the vial patches in one image; it must run both with /isaac-sim/python.sh on Brev and with the laptop's Python). It measures the median color of the HIGH (x 302–318, y 268–288), LOW (x 302–318, y 352–372), BLANK_HIGH (x 410–426, y 268–288) and BLANK_LOW (x 410–426, y 352–372) patches, and returns the raw Lab color and the blank-normalized color (linear RGB of the patch ÷ linear RGB of the blank at the same height, then × the run's median blank, converted to Lab), exactly as scripts/blank_check.py does. Install colour-science with '/isaac-sim/python.sh -m pip install --user colour-science' if needed (tell me first). Draw the four boxes on card7_step1_more_samples.png and save it as /workspace/project/renders/card7_step2_patches.png. If a box doesn't land on the liquid or on the empty neighbour vial in the twin, find the twin's equivalent position, and report both sets of coordinates. Do NOT commit."
 
-> "Write scripts/replay_feed.py with one job: hand out the recorded vials of video 5 in order, as if they were arriving live. A function iter_vials() yields, for each of the 30 vials: vial number, recipe ID, previous recipe ID (None for vial 1), total mL, mp4 time and the last parked frame (read from data/.../vial_fill_video_5.mp4 at last_parked_frame from annotations/video5_vial_times_corrected.csv). Command line: python scripts/replay_feed.py --vial 7 --save scratch/replay_v7.jpg saves that frame and prints its details; python scripts/replay_feed.py --list prints all 30 rows without reading frames. Do NOT commit; show me the output and the saved image."
+**Check:** in the picture, HIGH and LOW sit inside the filled vial's liquid, and BLANK_HIGH and BLANK_LOW inside the empty neighbour vial, clear of the glass walls. Note any changed coordinates; they go into `docs/twin-map.md` in step 8.
+**Commit (laptop, after the session):** `Card 7 step 2: patch measurement shared by twin and real images`
 
-**Check:** the saved vial 7 image shows the green vial parked under the nozzle; `--list` shows 30 rows, recipes 5–14, previous recipe 6 for vial 7.
-**Commit:** `Card 10 step 2: replay feed for video 5`
+## Step 3 · Our own liquid: controllable color, fill height and mixing (Brev, about 30 min)
 
-### Step 3 · Explanation cache (no Cosmos yet)
+> "Card 7 step 3 only. Write scripts/set_liquid.py (one job: set the vial's liquid in the twin and render one image). Hide the twin's animated liquid and put in one smooth liquid column inside the filling vial, with the vial's real inner radius taken from the geometry, so that fill height = volume ÷ (π × inner radius²) for a given mL (10–80 mL). Give it a transparent material whose color comes from light absorption: absorption per color channel = k_orange × orange share + k_blue × blue share, with the 6 k numbers read from outputs/card7/twin_dye_strengths.json (start from the real anchored gradient in outputs/card7/anchored_gradient.csv, copied from the laptop). Add a 'mixing' setting from 0 (evenly mixed) to 1 (layered: darker at the bottom, lighter at the top, changing smoothly with no visible bands). Inputs: --orange, --blue, --ml, --mixing, --out. Render three tests: Recipe 7 (orange 0, blue 0.714, 70 mL), Recipe 6 (orange 0.25, blue 0, 40 mL) and Recipe 7 with mixing 0.7. Do NOT commit."
 
-> "Write scripts/explanation_cache.py with one job: store and look up Cosmos explanations per recipe change. Functions get(prev_recipe, next_recipe) and put(prev_recipe, next_recipe, explanation_dict), using outputs/explanations_cache.json with keys like "6->7", and append every put to outputs/cosmos_log.csv with a timestamp. A missing or broken file must never crash: get() then returns None. Command line: python scripts/explanation_cache.py --show prints what is cached. Do NOT commit; show me --show on an empty cache and after putting one test entry, then delete the test entry."
+**Check:** no stripes in any of the three. The 70 mL and 40 mL levels look like the real vials 9 and 6 (compare with `python scripts/replay_feed.py --vial 9 --save ...` on the laptop). Changing the shares visibly changes the color, and the mixing image is darker at the bottom without hard lines.
+**Commit (laptop):** `Card 7 step 3: controllable liquid in the twin`
 
-**Check:** an empty cache prints "no explanations cached yet"; the test entry appears under `"6->7"`; deleting the JSON file and running `--show` again doesn't crash.
-**Commit:** `Card 10 step 3: explanation cache`
+## Step 4 · Automatic calibration against the real clean vials (Brev, about 45 min of GPU)
 
-### Step 4 · Page skeleton
+> "Card 7 step 4 only. Write scripts/calibrate_colors.py (one job: match the twin's dye strengths to the real camera). Targets: the blank-normalized colors of the 10 real 3rd vials (outputs/card7/vials_30_transmittance.csv, copied from the laptop), HIGH patch for tall recipes and LOW for Recipes 5 and 6. Hold out Recipes 5 and 11: never use them to adjust anything. Loop, at most 4 rounds: render the 8 calibration recipes' clean vials with set_liquid.py at their real volumes, measure them with measure_patches.py relative to the twin's own empty neighbour vial, compute ΔE2000 to the real targets, and update the 6 dye strengths along the anchored gradient (Beer–Lambert: absorbance is linear in the strengths). Stop early when the median ΔE stops improving. Save outputs/card7/twin_dye_strengths.json and outputs/card7/calibration.csv (recipe, round, ΔE). Then render the 2 held-out recipes once with the final strengths and report their ΔE separately. Run it with nohup and a log. Do NOT commit."
 
-> "Add streamlit to requirements.txt and install it. Create app/dashboard.py: a Streamlit page titled 'Carryover Copilot · Fluid Mixing Station 3' with three panels side by side: (1) Recipe queue, (2) Latest vial, (3) Explanation. For now, fill them with fixed example text for vial 7 only. Give me the exact command to start it and tell me what I should see. Do NOT commit."
+**Check:** the table shows ΔE per recipe per round. Our target is every calibration recipe within about ΔE 3. The **held-out** Recipes 5 and 11 tell us whether it really generalizes. Report the numbers honestly even if they miss; don't add rounds or change the hold-out after seeing them.
+**Commit (laptop):** `Card 7 step 4: twin color calibration (held-out recipes 5 and 11)`
 
-**Check:** `streamlit run app/dashboard.py` opens a browser tab with three panels and the title. Nothing crashes.
-**Commit:** `Card 10 step 4: dashboard skeleton`
+## Step 5 · Side-by-side check (laptop, about 10 min)
 
-### Step 5 · Panel 1, the recipe queue with lights
+> "(laptop) Card 7 step 5 only. Make outputs/card7/calibration_check.png: for each of the 10 recipes, the real 3rd-vial crop next to the calibrated twin render at the same volume, labeled with recipe, ΔE, and 'held out' for Recipes 5 and 11. Do NOT commit."
 
-> "Wire panel 1 to flush_advisor.py's evaluate_transition() and evaluate_order() (import them; don't copy them). Show video 5's recipe order (5 → 6 → … → 14) as a row of recipe boxes with a green/amber/red light on each change, the recipe gap, and the action text. Highlight the next change coming up. Below it, show the reorder advice for the next 3 recipes in the queue (the Batch Scheduler holds up to 3), with 'needs the planner's OK'. If outputs/card4/risk_model.json or outputs/card3/baseline_results.csv is missing, show the same plain message flush_advisor.py prints instead of crashing. Do NOT commit."
+**Check:** by eye, would a stranger believe each pair shows the same liquid? Note any recipe that still looks off.
+**Commit:** nothing (the picture is in `outputs/`).
 
-**Check:** the 6 → 7 change is red, 8 → 9 amber, and the lights match `python scripts/flush_advisor.py 5 6 7 8 9 10 11 12 13 14` exactly.
-**Commit:** `Card 10 step 5: recipe queue panel with risk lights`
+## Step 6 · The image set (Brev, second session, about 1.5–2.5 hours of GPU)
 
-### Step 6 · Panel 2, replaying the vials
+> "Card 7 step 6 only. Write scripts/generate_dataset.py (one job: render the labeled training images) using set_liquid.py's liquid and Replicator. Randomize for every image: orange and blue shares (clean recipes, and contaminated mixes between two recipes); fill 10–80 mL, with at least 40% of images between 25 and 45 mL; mixing 0–1; light brightness ±30% and color temperature; one extra glare light in a random position in half the images; camera jitter of 1–2 pixels; the neighbour vial missing in 10% of images. Save PNGs in batches of 200 under /workspace/project/renders/card7_dataset/batch_000 … with a labels.csv per batch: file, orange share, blue share, fill mL, mixing, light settings, glare yes/no, neighbour present yes/no, and the HIGH/LOW raw and blank-normalized Lab from measure_patches.py. First render a 30-image smoke test and a grid of those 30 images next to 30 real vial crops (scratch, not the real test vials' verdicts), then stop and wait for my OK. Only after my OK, render 1,000 images with nohup; it must resume from the last finished batch if stopped."
 
-> "Wire panel 2 to replay_feed.py and vial_check.py. Add a 'Next vial' button and an 'Auto-play' switch (one vial every 3 seconds). For each vial, show the vial crop with the measured patch outlined, the recipe and previous recipe, ΔE, and a big PASS / UNSURE / FAIL label colored green / amber / red. Mark 'low confidence' for vials under 60 mL and 'reference vial' for 3rd vials. Keep the replay position when the page refreshes (st.session_state). Panel 1 should move its highlight to the change that the current vial belongs to. Do NOT commit."
+**Check:** in the smoke-test grid, would a stranger believe the twin images come from the same camera? Look especially at the small fills. After the full run: the labels match a few random images by eye, and `outputs/run_log.csv` gives minutes per 1,000 images. Decide on more images (up to 2,000) only if Card 8 needs them.
+**Commit (laptop):** `Card 7 step 6: twin dataset generator` (scripts only; the images go to the team Drive, never GitHub)
 
-**Check:** step through vials 6 → 7 → 8. Before vial 7, panel 1 shows the red 6 → 7 light; vial 7 shows FAIL; vial 8 shows PASS or UNSURE. Auto-play runs through all 30 without errors.
-**Commit:** `Card 10 step 6: vial replay panel`
+## Step 7 · Fair lighting test: raw vs blank-normalized (Brev renders + laptop)
 
-### Step 7 · Panel 3 and the cascade counter
+> "Card 7 step 7 only. Render Recipes 7, 9, 12 and 14 clean, and each one tinted with 15% of the previous recipe's mix, at their real volumes, each under 5 lighting setups: normal, 30% dimmer, 30% brighter, light from one side only, and normal plus a glare spot. Measure each with measure_patches.py. On the laptop, make outputs/card7/lighting_test.csv and a table: for each image, ΔE to the clean render under normal light, and the PASS/UNSURE/FAIL verdict (ΔE < 2 / 2–5 / > 5), with raw and with blank-normalized colors. Count how often the verdict changes compared with normal light. Do NOT commit."
 
-> "Wire panel 3 to explanation_cache.py. When the current vial is FAIL, look up the cached explanation for 'previous->current' recipe and show likely_cause and operator_action in large text, plus the evidence line: intended recipe, previous recipe, measured color vs reference (ΔE and patch) and the frame number used. If nothing is cached, show 'Explanation unavailable (Cosmos not running)' and still show the evidence line. PASS vials show 'No explanation needed'. UNSURE vials show 'Check by eye (vial model not built)'. Under the panels, add a counter: how many vials reached each cascade step (1 checked before fill, 2 color-checked, 3 unsure, 4 sent to Cosmos) and the average time per vial for the color check. Do NOT commit."
+**Check:** the scenes the video 5 test couldn't cover (uneven light, glare) show whether blank normalization really protects the color check. Report it either way. This decides whether the dashboard should switch to normalized colors for the CSI live test.
+**Commit (laptop):** `Card 7 step 7: lighting robustness test`
 
-**Check:** with an empty cache, vial 7 shows "Explanation unavailable" plus the evidence line; after a full auto-play, the counter shows 30 vials color-checked, and the number sent to Cosmos equals the number of FAIL vials.
-**Commit:** `Card 10 step 7: explanation panel and cascade counter`
+## Step 8 · Write it down (laptop)
 
-### Step 8 · Honesty banner and end-of-run summary
+> "(laptop) Card 7 step 8. Update docs/twin-map.md (what the stripes were, twin patch coordinates, the liquid replacement), RUNBOOK.md (the Card 7 commands and outputs/card7 in the Current outputs table), docs/PROGRESS.md (a 'Card 7' section: what we did, calibration ΔE including the held-out recipes, the lighting test result, GPU minutes per 1,000 images, and credit the teammate for blank normalization, the anchored gradient, the calibration loop and the mixing state), and GEMINI.md section 7. Show me the PROGRESS.md section before committing."
 
-> "Add a banner at the top: 'Replay of recorded video 5. Clean references are the 3rd vials of this same run, so this replay is a demonstration, not a score. Our score is the Card 3 leave-one-recipe-out result.' When the replay reaches vial 30, show a summary table: every FAIL and UNSURE vial, its ΔE, and judge_1's verdict from annotations/video5_visual_verdicts.csv side by side. Do NOT commit."
-
-**Check:** the banner is visible without scrolling; the summary lists vial 7 as FAIL with judge_1 'unsure', and every vial in the table can be traced to a row of `outputs/card3/baseline_results.csv`.
-**Commit:** `Card 10 step 8: honesty banner and run summary`
-
-### Step 9 · One command and a cold start by a teammate
-
-> "Add a 'Dashboard' section to RUNBOOK.md: which scripts must have run first (baseline_check.py → fit_risk_model.py), the one command that starts the dashboard, what the page shows, and what to do if it says a file is missing. Add a plain-English 'Card 10 · Dashboard' entry to docs/PROGRESS.md and update GEMINI.md section 7. Then commit and push."
-
-**Check:** a teammate who did not build it starts the dashboard from RUNBOOK.md alone, on their own laptop, and replays to vial 9. Anything they had to ask about goes back into RUNBOOK.md.
-**Commit:** `Card 10 step 9: dashboard runbook and docs`
+**Commit:** `Card 7: calibrated twin renders and lighting test`
 
 ---
 
-## Step 10: needs Cosmos running on Brev (after Card 9)
+## After Card 7: Card 8 in one line
+
+Train a small model on the twin images only to estimate the dye shares (and fill level) from the vial crop, with special attention to 25–45 mL fills. Test it only on the real vials, against the color check, small vials reported separately. A separate plan will follow once step 6's images exist.
+
+---
+
+## Card 10 · remaining step (needs Cosmos on Brev, after Card 9)
+
+Steps 1–9 of Card 10 are done (`app/dashboard.py`; see `docs/PROGRESS.md`, "Card 10").
 
 ### Step 10 · Plug in the real explanations
 
 Only after Card 9 has produced `scripts/explain.py` (built on `scripts/ask_cosmos.py`, version C prompts: vial crop, clean reference image, intended and previous recipe, dispense order, measured ΔE and the advisor's light).
 
-> "With the Cosmos port forward open, run explain.py once for each of the 9 recipe changes in video 5, using each change's first vial, and save every answer with explanation_cache.put(). Then replay the dashboard. Do NOT commit; show me the cached explanation for 6->7 and a screenshot of panel 3 on vial 7."
+> "With Cosmos reachable, run explain.py once for each of the 9 recipe changes in video 5, using each change's first vial, and save every answer with explanation_cache.put(). Then replay the dashboard. Do NOT commit; show me the cached explanation for 6->7 and a screenshot of panel 3 on vial 7."
 
 **Check:** vial 7's panel names Recipe 6 (orange) as the previous recipe and the measured color shift as evidence. Stop the Brev instance and replay again: the page still shows the cached explanation. Read all 9 explanations yourself; would an operator know what to do?
 **Commit:** none for the cache (it lives in `outputs/`). Copy `outputs/explanations_cache.json` to the demo laptop before the video recording and the live test.
 
----
-
-## Not in this plan (decide later)
+## Not in these plans (decide later)
 
 - **Live mode at CSI** (reading the real `vial_fill` camera and detecting fills without labels). It depends on the organizers' answer about camera access; `scripts/find_physical_fills.py` is the starting point.
-- **Step 3 of the cascade** (twin-trained model): only if Card 3b says the color check plus Cosmos isn't good enough.
