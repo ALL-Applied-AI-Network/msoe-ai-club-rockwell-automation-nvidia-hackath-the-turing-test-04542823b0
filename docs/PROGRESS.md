@@ -2,7 +2,7 @@
 
 This is our team's lab notebook: what we did, what we found, and **why we did it that way**. It is written for teammates with no coding background and for judges who ask "why?". Add a section every time a task card is finished (newest work at the bottom of "What we did").
 
-*Last updated: Oct 13, 2026 (Cards 1 and 2 done; Cosmos groundwork in place).*
+*Last updated: Oct 22, 2026 (Cards 1–4, 3b, 10, and 6 done; twin render verified).*
 
 ---
 
@@ -234,6 +234,16 @@ where $\Delta E_{\text{recipe gap}}$ is the $\Delta E2000$ between the two recip
   - A permanent top warning makes clear that 3rd vials in Video 5 serve as clean references for this demonstration, so the replay is a demonstration, not our evaluation score (our formal score is the Card 3 leave-one-recipe-out result).
   - When the replay finishes at Vial 30, an End-of-Run Summary table compares all 13 flagged/borderline vials with teammate visual inspection (`judge_1`): **0 misses on PASS vials** (all 7 PASS vials were confirmed 'matches'). Vial 7 is caught as 🔴 FAIL ($\Delta E = 25.55$) where the human judge was 'unsure'.
 
+### Card 6 · First twin render (Oct 22)
+
+- **What:** on a Brev RTX PRO 6000 (Isaac launchable, browser VS Code, Isaac Sim 6.0.1, matching the twin's tested version 6.0) we rendered 10 frames of the twin's fill animation from FillCam with `scripts/render_test.py`. Map of the twin: `docs/twin-map.md`.
+- **Result:** FillCam matches the real `vial_fill` camera closely: same angle, same vial and holder position, even the label. Card 7 can start without moving the camera.
+- **Differences to handle in Card 7:**
+  1. The twin's liquid is light cyan where the real Recipe 7 is deep blue (the organizers said liquid color is approximate), so colors must be calibrated against the real clean 3rd vials.
+  2. The twin's liquid shows horizontal bands the real vial doesn't, cause not yet known (fill animation or render not fully converged).
+  3. The real camera bends the image slightly (curved backdrop edge) while FillCam is a perfect pinhole; small near the vial.
+  4. The real image is hazier and softer.
+
 ### Cosmos groundwork (Oct 13)
 
 
@@ -266,10 +276,11 @@ where $\Delta E_{\text{recipe gap}}$ is the $\Delta E2000$ between the two recip
 
 ## What's next
 
-1. **Card 10, dashboard:** Card 10 steps 1–9 done; step 10 (Cosmos explanations) after Card 9; teammate cold-start test pending.
-2. **Card 6, first twin render:** render 10 images from the twin's `vial_fill` camera on Brev, compare angle and vial position with a real frame; decides whether Cards 7–8 are feasible.
-3. **Card 9, explanations:** explain flagged vials with Cosmos (version C: flagged vial crop + reference image + recipe info + measured $\Delta E$ and flush prediction), with explanations scored.
-4. **Human answer key:** one judge so far (`judge_1`); add `judge_2` later and rerun `scripts/baseline_check.py` and `scripts/score_cosmos_check.py`.
+1. **Card 7, twin color calibration & dataset:** calibrate liquid colors against real clean 3rd vials and generate synthetic variations (plan in PLAN.md, coming from Claude).
+2. **Card 9, explanations:** explain flagged vials with Cosmos (version C: flagged vial crop + reference image + recipe info + measured $\Delta E$ and flush prediction), with explanations scored.
+3. **Card 10, step 10:** plug real Brev explanations into outputs/explanations_cache.json.
+4. **Teammate cold-start test:** run full dashboard cold-start test with a teammate.
+5. **Human answer key:** one judge so far (judge_1); add judge_2 later and rerun scripts/baseline_check.py and scripts/score_cosmos_check.py.
 
 ## Words used here
 

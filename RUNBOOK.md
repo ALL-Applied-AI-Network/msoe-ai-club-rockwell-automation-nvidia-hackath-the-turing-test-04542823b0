@@ -134,6 +134,9 @@ All active project outputs are organized into per-card subdirectories under `out
 | `scratch/` | `card3b_brev.zip` | Laptop packaging | Standalone deployment archive containing `cosmos_check.py`, `ask_cosmos.py`, `manifest.csv`, and `crops/` |
 | `outputs/card3b/` | `cosmos_check_answers.csv` | `cosmos_check.py` (on Brev) | 216 raw responses and decisions across 18 baseline vials × 4 prompt versions × 3 repeats |
 | `outputs/card3b/` | `per_vial.csv` | `scripts/score_cosmos_check.py` | 18-vial evaluation table with judge_1, HIGH/LOW $\Delta$E, baseline flag, and V0–V3 repeat answers and majorities |
+| `outputs/card6/renders/` | `fill_frame_001.png` ... `fill_frame_686.png` | `scripts/render_test.py` (on Brev) | 10 RTX path-traced test frames rendered from digital twin `FillCam` spanning the 1–686 filling animation sequence |
+| `outputs/card6/` | `run_log.csv` | `scripts/render_test.py` (on Brev) | Run timing, GPU details, and render count log |
+| `scratch/` | `card6_compare.png` | `scratch/make_compare.py` | Visual side-by-side comparison of twin `fill_frame_686.png` vs real Video 5 `replay_v9.jpg` |
 
 ---
 
@@ -550,3 +553,40 @@ If the dashboard reports a missing file on startup:
   Ensure the raw dataset is unpacked in `data/csi-vial-fill-dataset/` per Section 1.
 - **`Missing annotations/video5_vial_times_corrected.csv`:**
   Ensure Card 2 camera alignment annotations exist in `annotations/`.
+
+---
+
+## 5. Brev Isaac launchable session
+
+How to connect to the rented Brev GPU instance (`fluid-isaac`, RTX PRO 6000) running the official NVIDIA Isaac Sim launchable:
+
+1. **Access VS Code in the Browser:**
+   - In the Brev console for instance `fluid-isaac`, look under **"Using Secure Links"**.
+   - Click the Shareable URL labeled **"isaac"** to open VS Code directly in your browser.
+2. **Container Environment & Permissions:**
+   - You are user `ubuntu` inside the Isaac Sim container.
+   - Note: There is **no `sudo`**, **no `docker`**, and **no `tmux`** inside the container.
+   - The primary project folder is `/workspace/project` (contains `repo`, `twin`, `renders`, and `logs`).
+3. **Accept EULA (First Time Only):**
+   ```bash
+   echo 'export ACCEPT_EULA=Y' >> ~/.bashrc
+   source ~/.bashrc
+   ```
+4. **Running Long Jobs:**
+   - To keep scripts running safely without dropping on browser disconnect, run with `nohup` and redirect logs to `/workspace/project/logs`:
+   ```bash
+   nohup /isaac-sim/python.sh /workspace/project/repo/scripts/<script_name>.py > /workspace/project/logs/<job_name>.log 2>&1 &
+   ```
+5. **Downloading Results to Laptop:**
+   - Compress your results into a zip archive inside `/workspace/project/`.
+   - Right-click the `.zip` file in the VS Code file explorer panel and select **Download...**.
+6. **Card 6 Render Test Command:**
+   ```bash
+   /isaac-sim/python.sh /workspace/project/repo/scripts/render_test.py
+   ```
+   Renders 10 path-traced test frames from `FillCam` (frames 1, 50, 150, 250, 301, 360, 450, 600, 660, 686) into `/workspace/project/renders/` and logs timings to `/workspace/project/repo/outputs/run_log.csv`.
+7. **Important Session Rules:**
+   - **Never run `docker compose down`** (this can break or tear down the launchable container).
+   - **Remove any GitHub login before stopping.**
+   - Click **Stop** (do **NOT** click Delete) in the Brev console when done.
+
