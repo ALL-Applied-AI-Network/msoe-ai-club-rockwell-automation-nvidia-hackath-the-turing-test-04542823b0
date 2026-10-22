@@ -244,7 +244,7 @@ where $\Delta E_{\text{recipe gap}}$ is the $\Delta E2000$ between the two recip
   3. The real camera bends the image slightly (curved backdrop edge) while FillCam is a perfect pinhole; small near the vial.
   4. The real image is hazier and softer.
 
-### Blank normalization (Oct 22) · idea from [ayden]
+### Blank normalization (Oct 22) · idea from Ayden
 - **What:** we measure each patch relative to the empty vial in the next holder at the same height, like a lab "blank" (BLANK_HIGH x 410–426, y 268–288; BLANK_LOW x 410–426, y 352–372; `scripts/blank_check.py`). 27 of 30 frames show that empty vial. Vials 6, 24 and 30 have an empty pocket next to them; they are all reference vials, so they use the median blank of the other 27 (marked blank_fallback). The blank is steady: BLANK_HIGH varies by σ ≈ 1.1 L, BLANK_LOW by 1.3 L in total.
 - **Same detection:** the Card 3 scoring with blank-normalized colors catches exactly the same vials as raw colors (HIGH 8 of 8 with 0 false alarms; LOW 7 of 10 with 1).
 - **Lighting:** making 5 frames 20% darker or brighter flipped 2 of 5 raw verdicts (vials 8 and 13, PASS → UNSURE) and no normalized verdicts. For an even brightness change this holds by design; uneven light and glare are tested in Card 7 with the twin.
