@@ -128,7 +128,7 @@ We use **two** agents. We do **not** use Codex, GPT-6 Astra, or any other agent.
 ├── CLAUDE.md            # Claude Code's memory file; imports GEMINI.md
 ├── README.md            # Organizers' event info + our project summary
 ├── RUNBOOK.md           # Dataset inventory and every command that works
-├── PLAN.md              # Claude's step-by-step plan for the current planned card (now Card 10)
+├── PLAN.md              # Claude's step-by-step plan for the current planned card (now Card 7; Card 10's last step at the bottom)
 ├── requirements.txt     # Python packages for the laptop environment
 ├── .env.example         # Template for .env (copy it; never commit .env)
 ├── docs/
