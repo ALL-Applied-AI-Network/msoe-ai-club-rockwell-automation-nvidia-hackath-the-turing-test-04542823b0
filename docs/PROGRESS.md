@@ -244,6 +244,13 @@ where $\Delta E_{\text{recipe gap}}$ is the $\Delta E2000$ between the two recip
   3. The real camera bends the image slightly (curved backdrop edge) while FillCam is a perfect pinhole; small near the vial.
   4. The real image is hazier and softer.
 
+### Blank normalization (Oct 22) · idea from [ayden]
+- **What:** we measure each patch relative to the empty vial in the next holder at the same height, like a lab "blank" (BLANK_HIGH x 410–426, y 268–288; BLANK_LOW x 410–426, y 352–372; `scripts/blank_check.py`). 27 of 30 frames show that empty vial. Vials 6, 24 and 30 have an empty pocket next to them; they are all reference vials, so they use the median blank of the other 27 (marked blank_fallback). The blank is steady: BLANK_HIGH varies by σ ≈ 1.1 L, BLANK_LOW by 1.3 L in total.
+- **Same detection:** the Card 3 scoring with blank-normalized colors catches exactly the same vials as raw colors (HIGH 8 of 8 with 0 false alarms; LOW 7 of 10 with 1).
+- **Lighting:** making 5 frames 20% darker or brighter flipped 2 of 5 raw verdicts (vials 8 and 13, PASS → UNSURE) and no normalized verdicts. For an even brightness change this holds by design; uneven light and glare are tested in Card 7 with the twin.
+- **Anchored gradient:** absorbance relative to the blank, with zero at the empty vial (6 numbers instead of Card 4's 9), gives a median leave-one-recipe-out error of ΔE 5.4 against 6.3: slightly better, on only 8 recipes (Recipe 12 improved most, Recipe 14 got worse). The red-channel number for orange is still negative (−0.53); a likely but untested cause is that a filled vial focuses light like a lens. On the LOW patch the backdrop is dark, so the ratio there is not a true transmittance (values above 1 occur).
+- **Decision:** Card 7 compares the twin and the real camera in this blank-relative space. A vial of clear water would be a better blank than an empty one; video 5 has none (see the gap list).
+
 ### Cosmos groundwork (Oct 13)
 
 

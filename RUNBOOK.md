@@ -137,6 +137,12 @@ All active project outputs are organized into per-card subdirectories under `out
 | `outputs/card6/renders/` | `fill_frame_001.png` ... `fill_frame_686.png` | `scripts/render_test.py` (on Brev) | 10 RTX path-traced test frames rendered from digital twin `FillCam` spanning the 1–686 filling animation sequence |
 | `outputs/card6/` | `run_log.csv` | `scripts/render_test.py` (on Brev) | Run timing, GPU details, and render count log |
 | `scratch/` | `card6_compare.png` | `scratch/make_compare.py` | Visual side-by-side comparison of twin `fill_frame_686.png` vs real Video 5 `replay_v9.jpg` |
+| `outputs/card7/` | `blank_check.csv` | `scripts/blank_check.py` | Robustness test evaluating 5 vials under $\pm 20\%$ illumination shift comparing raw vs blank-normalized $\Delta E2000$ |
+| `outputs/card7/` | `vials_30_transmittance.csv` | `scripts/blank_check.py` | 30-vial optical transmittance table with BLANK_HIGH, BLANK_LOW, and blank_status markers |
+| `outputs/card7/` | `anchored_gradient.csv` | `scripts/blank_check.py` | 6-parameter anchored absorbance fit and LORO cross-validation errors for Recipes 7–14 |
+| `outputs/card7/` | `normalized_baseline_scores.csv` | `scripts/blank_check.py` | Card 3 baseline classification metrics comparing raw vs blank-normalized colors across 3 answer keys |
+| `outputs/card7/` | `gradient_check.png` | `scripts/blank_check.py` | 3-panel scatter plot of measured vs predicted absorbance per channel (R, G, B) |
+| `scratch/` | `blank_patches_grid.png` | `scripts/blank_check.py` | 5×6 visual verification grid of BLANK_HIGH and BLANK_LOW patch placement across all 30 frames |
 
 ---
 
@@ -407,6 +413,20 @@ First time only, install the packages: `pip install -r requirements.txt`
 - **Generated output:**
   - `outputs/card3b/per_vial.csv` (18-vial table with judge_1, HIGH/LOW $\Delta E$, baseline flag, and V0–V3 answers and majorities)
   - Console tables for repeat agreement, per-vial inspection, and balanced accuracy benchmarks on All 18 vials and 16 Tall vials.
+
+### Script: `scripts/blank_check.py` (Blank Normalization & Robustness Check)
+- **Purpose:** Measures optical transmittance relative to the empty neighbour vial in the starwheel (in-line blank), verifies lighting invariance under $\pm 20\%$ exposure shifts, evaluates the 6-parameter anchored gradient model, and compares normalized baseline scoring against Card 3.
+- **Run command:**
+  ```powershell
+  python scripts/blank_check.py
+  ```
+- **Generated output:**
+  - `scratch/blank_patches_grid.png` (5×6 visual patch placement grid)
+  - `outputs/card7/blank_check.csv` (robustness illumination test table)
+  - `outputs/card7/vials_30_transmittance.csv` (30-vial transmittance and blank table)
+  - `outputs/card7/anchored_gradient.csv` (anchored gradient LORO results)
+  - `outputs/card7/normalized_baseline_scores.csv` (Card 3 baseline raw vs normalized comparison)
+  - `outputs/card7/gradient_check.png` (3-channel absorbance linearity plot)
 
 ---
 
