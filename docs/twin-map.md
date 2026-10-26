@@ -76,3 +76,28 @@ The included script `tools/render_example.py` is executed through Isaac Sim's bu
 4. Creates an NVIDIA Replicator render product targeting the camera prim.
 5. Runs RTX path-tracing steps (`rep.orchestrator.step(...)`) to let light bounces converge.
 6. Pulls the rendered RGB pixels from the GPU memory and saves them as a PNG via OpenCV.
+
+---
+
+## 3. Card 7 Updates: Liquid Modeling, Stripes Cause, and Patch Alignment
+
+### What caused the horizontal stripes?
+In the initial Card 6 test renders, the liquid inside the vial showed distinct horizontal stripes. In Card 7 Step 1, we rendered frame 686 with 4× more path-tracing samples (256 spp vs 64 spp). The stripes remained identical, proving they were not render noise.
+Investigation revealed three root causes:
+1. **Surface Opacity Shading:** The twin's original animated liquid (`stations/fill_station/geometry/fill_station.usdc`) used surface opacity rather than true physical volumetric absorption through the fluid depth.
+2. **Background Structure Transmission:** The horizontal bars of the factory background and conveyor brackets behind the transparent vial were transmitted directly through the flat opacity shader.
+3. **Geometry Overlap:** The animated liquid mesh was slightly wider than the inner glass vial wall, causing surface overlapping and z-fighting against the glass boundary.
+
+### Replacing the liquid at render time (without editing organizers' files)
+To maintain complete integrity of the organizers' digital twin files, we never edit the USDA or USDC files on disk. Instead, `scripts/set_liquid.py` dynamically modifies the USD stage in memory at render time:
+1. Deactivates and hides the twin's pre-recorded animated liquid prim (`Fluid_Filling_A_FillStation_Geo`).
+2. Creates a clean volumetric cylinder mesh positioned at the physical bottom cavity floor (`Z = 0.1311` inches) with radius `13.133 mm` (exactly `0.05 mm` inside the inner glass radius `13.183 mm` to prevent z-fighting).
+3. Binds an NVIDIA OmniSurface MDL material configured with physical volumetric absorption (Beer–Lambert attenuation across the transmission depth of `26.27 mm`), parameterized by orange share, blue share, fill volume (10–80 mL), and vertical mixing stratification.
+
+### Measurement patch coordinates (unchanged)
+Because `FillCam` aligns with the physical station's `vial_fill` camera, our measurement patch coordinates sit at the exact same pixel positions in the twin as on the real camera:
+- **`HIGH` patch:** $x \in [302, 318], \quad y \in [268, 288]$ (centered in front of the white paper backdrop).
+- **`LOW` patch:** $x \in [302, 318], \quad y \in [352, 372]$ (centered in front of the dark conveyor).
+- **`BLANK_HIGH` patch:** $x \in [410, 426], \quad y \in [268, 288]$ (on the neighbouring empty vial in the next starwheel pocket).
+- **`BLANK_LOW` patch:** $x \in [410, 426], \quad y \in [352, 372]$ (on the neighbouring empty vial in the next starwheel pocket).
+

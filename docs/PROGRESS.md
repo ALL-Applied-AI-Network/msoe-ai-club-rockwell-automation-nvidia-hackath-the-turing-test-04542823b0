@@ -251,6 +251,20 @@ where $\Delta E_{\text{recipe gap}}$ is the $\Delta E2000$ between the two recip
 - **Anchored gradient:** absorbance relative to the blank, with zero at the empty vial (6 numbers instead of Card 4's 9), gives a median leave-one-recipe-out error of ΔE 5.4 against 6.3: slightly better, on only 8 recipes (Recipe 12 improved most, Recipe 14 got worse). The red-channel number for orange is still negative (−0.53); a likely but untested cause is that a filled vial focuses light like a lens. On the LOW patch the backdrop is dark, so the ratio there is not a true transmittance (values above 1 occur).
 - **Decision:** Card 7 compares the twin and the real camera in this blank-relative space. A vial of clear water would be a better blank than an empty one; video 5 has none (see the gap list).
 
+### Card 7 · Calibrated twin renders (Oct 26)
+
+- **Credit:** We credit Ayden for the foundational ideas behind this card: blank normalization using the adjacent starwheel vial, the anchored gradient absorption model, the automatic feedback calibration loop, and the vertical mixing stratification model.
+- **Stripes cause and liquid replacement:** The twin's original animated liquid used flat surface opacity rather than true physical volumetric absorption through the liquid. The horizontal stripes remained identical even with 4× more path-tracing samples (256 spp vs 64 spp), confirming they were not render noise; they came from machine bars behind the vial (rear safety grid and cross rail) seen through the transparent vial, the surface opacity material, and a liquid mesh slightly wider than the glass causing coplanar z-fighting. We replaced it at render time without modifying the organizers' USDA files (`scripts/set_liquid.py`): we hide the pre-recorded mesh and inject a clean volumetric cylinder (`OmniSurface` with true Beer–Lambert volume absorption, radius 13.133 mm, exactly 0.05 mm inside the inner glass wall).
+- **Measurement patch alignment:** Virtual camera `FillCam` aligns with the real physical camera so accurately that our measurement patches sit at the exact same pixel coordinates in the twin as on the real camera (HIGH: x in [302, 318], y in [268, 288]; LOW: x in [302, 318], y in [352, 372]; BLANK_HIGH and BLANK_LOW: x in [410, 426]).
+- **Fill height calibration:** Calibrated on the real 3rd vials (`scripts/calibrate_colors.py` -> `outputs/card7/twin_fill_height.json`). Liquid height in the twin matches the physical camera within 3.5 px across the full 30–80 mL range.
+- **Liquid lens effect:** In the twin, clear liquid lets 1.21–1.23× (HIGH) and 1.32–1.40× (LOW) as much light through as the empty vial (outputs/card7/twin_lens_factor.json), focusing backlight into the sensor.
+- **Color calibration:** Across the 8 calibration recipes, the median color error was ΔE 6.2 (target ΔE 3 was not met; worst was Recipe 10 at 12.8, which rendered lighter/greener than the real murky vial). The two held-out recipes, never touched during calibration, achieved ΔE 1.4 (Recipe 5, 30 mL) and ΔE 3.9 (Recipe 11, 70 mL). A simple gain-only camera-response correction (3 numbers: R = 1.31, G = 0.90, B = 0.82; `scripts/fit_camera_response.py` -> `outputs/card7/camera_response.json`) brings the calibration median ΔE down to 5.1 and improves both held-out recipes to ΔE 1.35 and 2.45; all 10 recipes improved.
+- **Lens check on real data:** Dividing real transmittances by the twin's lens factor (`scripts/lens_check.py`) shifts the negative red-channel orange absorption coefficient from −0.53 to −0.44; it remains negative. The lens factor explains only a small part (−0.53 → −0.44). The rest is most likely the camera's non-linear response (fitted exponents 1.06–1.18) or red light already being almost fully blocked by blue dye; an interaction between the dyes is possible but untested.
+- **Dataset generation:** Rendered 1,000 synthetic images in 18.8 GPU-minutes on an NVIDIA RTX PRO 6000 (1.1 s per image; `scripts/generate_dataset.py`). Dataset composition: 30 images per clean recipe, 52% of fills concentrated in the small vial range (25–45 mL), with randomized lighting, glare, 1–2 px camera jitter, and vertical mixing stratification. Clean renders match the calibration baseline within ΔE 0.6 (checked on 3 recipes).
+- **Lighting robustness test:** Under ±30% dimmer/brighter lighting (`scripts/lighting_test.py` -> `outputs/card7/lighting_test.csv`), clean vials were wrongly flagged 8 of 8 times with raw colors (false alarms), but only 2 of 8 times with blank-normalized colors (both Recipe 7, shifting to UNSURE). With light from one side only, both methods wrongly flagged all 4 clean vials due to extreme asymmetry. The specular glare spots fell outside our patch boxes, so glare was not truly tested. Vials tinted with 15% carryover were caught under every lighting condition for Recipes 7, 12, and 14; for Recipe 9 (dilute mix), the 15% tint was invisible to both methods (ΔE ≈ 1.0), like the real vial 13 (8→9).
+- **Decisions:** Use blank-normalized colors for the live test at CSI Station 3, add a "lighting changed: re-take reference vials" warning to the dashboard, and capture fresh reference vials under ambient room lighting on demo day.
+- **Showcase video:** outputs/card7/twin_showcase.mp4 (not committed to Git; archived on team Google Drive). A title card stating that the twin varies appearance only and does not simulate carryover, then our calibrated Recipe 7 liquid (blue) filling a vial to 70 mL as seen from FillCam, then a montage of 60 dataset images (different recipes, fill levels from about 16 to 72 mL, lighting, glare and mixing states). Known render artifact: thin vertical lines in the liquid, most likely because the liquid column is built from flat strips; real vials don't show them.
+
 ### Cosmos groundwork (Oct 13)
 
 
@@ -283,11 +297,12 @@ where $\Delta E_{\text{recipe gap}}$ is the $\Delta E2000$ between the two recip
 
 ## What's next
 
-1. **Card 7, twin color calibration & dataset:** calibrate liquid colors against real clean 3rd vials and generate synthetic variations (plan in PLAN.md, coming from Claude).
-2. **Card 9, explanations:** explain flagged vials with Cosmos (version C: flagged vial crop + reference image + recipe info + measured $\Delta E$ and flush prediction), with explanations scored.
-3. **Card 10, step 10:** plug real Brev explanations into outputs/explanations_cache.json.
-4. **Teammate cold-start test:** run full dashboard cold-start test with a teammate.
-5. **Human answer key:** one judge so far (judge_1); add judge_2 later and rerun scripts/baseline_check.py and scripts/score_cosmos_check.py.
+1. **Card 8 (PLAN.md):** train small vial model on the twin dataset (special focus on 25–45 mL fills) and test against the real vials.
+2. **Card 9 (explanations):** explain flagged vials with Cosmos (version C: flagged vial crop + reference image + recipe info + measured $\Delta E$ and flush prediction), with explanations scored.
+3. **Dashboard lighting follow-up:** switch dashboard to blank-normalized colors for the live test, add a "lighting changed: re-take reference vials" warning, and take fresh reference vials under room lighting on demo day.
+4. **Card 10, step 10:** plug real Brev explanations into `outputs/explanations_cache.json`.
+5. **Teammate cold-start test:** teammate runs dashboard cold start from `RUNBOOK.md`.
+6. **Live test and final submission:** live test at CSI Station 3, video recording, 1-page summary.
 
 ## Words used here
 

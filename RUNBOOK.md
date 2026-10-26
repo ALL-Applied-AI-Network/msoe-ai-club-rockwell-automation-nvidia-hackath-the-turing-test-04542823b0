@@ -130,19 +130,29 @@ All active project outputs are organized into per-card subdirectories under `out
 | `outputs/card4/` | `risk_model.png` | `scripts/fit_risk_model.py` | Dual-panel scatter plot of first-vial error vs recipe gap with fitted lines and risk zones |
 | `outputs/card3b/crops/` | `vial01.png` ... `vial30.png` | `scripts/export_vial_crops.py` | 30 liquid-only vial crops between inner glass walls ($x \in [296, 322]$), short side $\ge 224$ px, no labels/holders |
 | `outputs/card3b/` | `manifest.csv` | `scripts/export_vial_crops.py` | Dosing amounts, prior recipes, batch positions, and reference vial IDs for all 30 vials |
-| `scratch/` | `card3b_crops.png` | `scripts/export_vial_crops.py` | 3×10 visual contact sheet of all 30 liquid crops |
+| `outputs/card3b/` | `card3b_crops.png` | `scripts/export_vial_crops.py` | 3×10 visual contact sheet of all 30 liquid crops |
 | `scratch/` | `card3b_brev.zip` | Laptop packaging | Standalone deployment archive containing `cosmos_check.py`, `ask_cosmos.py`, `manifest.csv`, and `crops/` |
 | `outputs/card3b/` | `cosmos_check_answers.csv` | `cosmos_check.py` (on Brev) | 216 raw responses and decisions across 18 baseline vials × 4 prompt versions × 3 repeats |
 | `outputs/card3b/` | `per_vial.csv` | `scripts/score_cosmos_check.py` | 18-vial evaluation table with judge_1, HIGH/LOW $\Delta$E, baseline flag, and V0–V3 repeat answers and majorities |
 | `outputs/card6/renders/` | `fill_frame_001.png` ... `fill_frame_686.png` | `scripts/render_test.py` (on Brev) | 10 RTX path-traced test frames rendered from digital twin `FillCam` spanning the 1–686 filling animation sequence |
 | `outputs/card6/` | `run_log.csv` | `scripts/render_test.py` (on Brev) | Run timing, GPU details, and render count log |
-| `scratch/` | `card6_compare.png` | `scratch/make_compare.py` | Visual side-by-side comparison of twin `fill_frame_686.png` vs real Video 5 `replay_v9.jpg` |
+| `outputs/card6/` | `card6_compare.png` | `scratch/make_compare.py` | Visual side-by-side comparison of twin `fill_frame_686.png` vs real Video 5 `replay_v9.jpg` |
 | `outputs/card7/` | `blank_check.csv` | `scripts/blank_check.py` | Robustness test evaluating 5 vials under $\pm 20\%$ illumination shift comparing raw vs blank-normalized $\Delta E2000$ |
 | `outputs/card7/` | `vials_30_transmittance.csv` | `scripts/blank_check.py` | 30-vial optical transmittance table with BLANK_HIGH, BLANK_LOW, and blank_status markers |
 | `outputs/card7/` | `anchored_gradient.csv` | `scripts/blank_check.py` | 6-parameter anchored absorbance fit and LORO cross-validation errors for Recipes 7–14 |
 | `outputs/card7/` | `normalized_baseline_scores.csv` | `scripts/blank_check.py` | Card 3 baseline classification metrics comparing raw vs blank-normalized colors across 3 answer keys |
 | `outputs/card7/` | `gradient_check.png` | `scripts/blank_check.py` | 3-panel scatter plot of measured vs predicted absorbance per channel (R, G, B) |
-| `scratch/` | `blank_patches_grid.png` | `scripts/blank_check.py` | 5×6 visual verification grid of BLANK_HIGH and BLANK_LOW patch placement across all 30 frames |
+| `outputs/card7/` | `blank_patches_grid.png` | `scripts/blank_check.py` | 5×6 visual verification grid of BLANK_HIGH and BLANK_LOW patch placement across all 30 frames |
+| `outputs/card7/` | `calibration.csv` | `scripts/calibrate_colors.py` | Per-recipe $\Delta E_{2000}$ across calibration rounds for the 8 training and 2 held-out recipes |
+| `outputs/card7/` | `calibration_check.png` | `scratch/make_calibration_check.py` | 2×5 contact sheet comparing real 3rd vials against calibrated twin renders at same volumes |
+| `outputs/card7/` | `camera_response.json` | `scripts/fit_camera_response.py` | Fitted power-law and gain-only camera response curves and per-recipe $\Delta E$ before/after tables |
+| `outputs/card7/` | `lighting_test.csv` | `scripts/lighting_test.py` | Quantitative evaluation of raw vs blank-normalized color checks under 5 lighting setups |
+| `outputs/card7/` | `card7_step7_lighting_test.md` | `scripts/lighting_test.py` | Detailed report on lighting robustness test findings and recommendations |
+| `outputs/card7/` | `twin_dye_strengths.json` | `scripts/calibrate_colors.py` | Calibrated absorption coefficients ($k_{\text{orange}}, k_{\text{blue}}$ per RGB channel) for OmniSurface liquid |
+| `outputs/card7/` | `twin_fill_height.json` | `scripts/calibrate_colors.py` | Calibrated linear fit mapping fill volume (mL) to liquid column height in inches |
+| `outputs/card7/` | `twin_lens_factor.json` | `scripts/calibrate_colors.py` | Measured clear liquid cylindrical optical lens focusing factors (HIGH and LOW) |
+| outputs/card7/ | 	win_showcase.mp4 | scripts/generate_dataset.py | Showcase video: title card, Recipe 7 fill to 70 mL, 60-image dataset montage (team Drive) |
+| `outputs/card7/` | `run_log.csv` | `scripts/generate_dataset.py` | GPU runtime log recording batch timings and image counts on RTX PRO 6000 |
 
 ---
 
@@ -421,12 +431,62 @@ First time only, install the packages: `pip install -r requirements.txt`
   python scripts/blank_check.py
   ```
 - **Generated output:**
-  - `scratch/blank_patches_grid.png` (5×6 visual patch placement grid)
+  - `outputs/card7/blank_patches_grid.png` (5×6 visual patch placement grid)
   - `outputs/card7/blank_check.csv` (robustness illumination test table)
   - `outputs/card7/vials_30_transmittance.csv` (30-vial transmittance and blank table)
   - `outputs/card7/anchored_gradient.csv` (anchored gradient LORO results)
   - `outputs/card7/normalized_baseline_scores.csv` (Card 3 baseline raw vs normalized comparison)
   - `outputs/card7/gradient_check.png` (3-channel absorbance linearity plot)
+
+---
+
+### Card 7: Digital Twin Calibration, Camera Response & Dataset
+
+#### Script: `scripts/calibrate_colors.py` (Card 7 Step 4: Twin Color Calibration Loop)
+- **Purpose:** Automatically matches the digital twin's 6 liquid absorption coefficients ($k_{\text{orange}}, k_{\text{blue}}$ across R, G, B) against the real clean 3rd vials. Runs on Brev Isaac Sim; strictly holds out Recipes 5 and 11.
+- **Run command (on Brev GPU):**
+  ```bash
+  /isaac-sim/python.sh scripts/calibrate_colors.py
+  ```
+- **Generated output:**
+  - `outputs/card7/twin_dye_strengths.json` (fitted absorption coefficients)
+  - `outputs/card7/calibration.csv` (per-recipe $\Delta E$ history across calibration rounds)
+
+#### Script: `scripts/fit_camera_response.py` (Card 7 Camera Response Fit)
+- **Purpose:** Fits power-law and gain-only response curves per color channel mapping twin blank-normalized patch colors to real camera colors in linear light (fitted on 8 calibration recipes, Recipes 5 and 11 held out).
+- **Run command:**
+  ```powershell
+  python scripts/fit_camera_response.py
+  ```
+- **Generated output:**
+  - `outputs/card7/camera_response.json` (fitted coefficients and per-recipe $\Delta E$ comparison before/after)
+
+#### Script: `scripts/lens_check.py` (Card 7 Lens Factor Diagnostic)
+- **Purpose:** Refits the 6 Beer–Lambert coefficients from `blank_check.py` after dividing real optical transmittance by the digital twin's cylindrical lens focusing factors (`twin_lens_factor.json`, HIGH).
+- **Run command:**
+  ```powershell
+  python scripts/lens_check.py
+  ```
+
+#### Script: `scripts/lighting_test.py` (Card 7 Step 7: Lighting Robustness Test)
+- **Purpose:** Renders clean and carryover-tinted vials across 4 tall recipes under 5 lighting setups (normal, dimmer, brighter, side-only, glare) to evaluate raw vs blank-normalized color robustness.
+- **Run command (on Brev GPU):**
+  ```bash
+  /isaac-sim/python.sh scripts/lighting_test.py
+  ```
+- **Generated output:**
+  - `outputs/card7/lighting_test.csv` (40-condition quantitative comparison)
+  - `outputs/card7/card7_step7_lighting_test.md` (full test report)
+
+#### Script: `scripts/generate_dataset.py` (Card 7 Step 6: Twin Dataset Generator)
+- **Purpose:** Renders diverse labeled synthetic training sets (1,000 images in batches of 200) varying dye shares, fill height (concentrated in small vial range 25–45 mL), vertical stratification/mixing, lighting brightness, glare, and camera jitter.
+- **Run command (on Brev GPU):**
+  ```bash
+  nohup /isaac-sim/python.sh scripts/generate_dataset.py --num-images 1000 --batch-size 200 > /workspace/project/logs/dataset_1000.log 2>&1 &
+  ```
+- **Generated output:**
+  - `outputs/card7/card7_dataset/batch_000/` ... `batch_004/` (images and `labels.csv` per batch)
+  - `outputs/card7/run_log.csv` (runtime timings and throughput logs)
 
 ---
 
