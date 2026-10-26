@@ -153,6 +153,12 @@ All active project outputs are organized into per-card subdirectories under `out
 | `outputs/card7/` | `twin_lens_factor.json` | `scripts/calibrate_colors.py` | Measured clear liquid cylindrical optical lens focusing factors (HIGH and LOW) |
 | outputs/card7/ | 	win_showcase.mp4 | scripts/generate_dataset.py | Showcase video: title card, Recipe 7 fill to 70 mL, 60-image dataset montage (team Drive) |
 | `outputs/card7/` | `run_log.csv` | `scripts/generate_dataset.py` | GPU runtime log recording batch timings and image counts on RTX PRO 6000 |
+| `outputs/card8/` | `twin_features.csv` | `scripts/build_twin_features.py` | 346-row feature table of unmixed twin renders with camera-response corrected linear RGB |
+| `outputs/card8/` | `model_threshold.json` | `scripts/train_vial_model.py` | Tuning set regression errors, ROC AUC, and selected 0.159 decision threshold |
+| `outputs/card8/` | `twin_holdout_predictions.csv` | `scripts/train_vial_model.py` | Predictions and share distances on the 78-image twin tuning set |
+| `outputs/card8/` | `real_predictions.csv` | `scripts/test_vial_model.py` | 30-vial real evaluation table with features, predicted shares, distances, and flags |
+| `outputs/card8/` | `real_test.csv` | `scripts/test_vial_model.py` | Benchmark evaluation table comparing color check vs twin model across subsets and answer keys |
+| `outputs/card8/` | `real_clean_share_error.csv` | `scripts/test_vial_model.py` | 10 clean 3rd vials model predicted shares vs true shares and mean absolute error (sim-to-real gap) |
 
 ---
 
@@ -487,6 +493,43 @@ First time only, install the packages: `pip install -r requirements.txt`
 - **Generated output:**
   - `outputs/card7/card7_dataset/batch_000/` ... `batch_004/` (images and `labels.csv` per batch)
   - `outputs/card7/run_log.csv` (runtime timings and throughput logs)
+
+---
+
+### Card 8: Twin-Trained Vial Model Tested on Real Vials
+
+#### Script: `scripts/build_twin_features.py` (Card 8 Step 1: Feature Extraction)
+- **Purpose:** Copies dataset labels into `outputs/card7/dataset_labels/`, filters for unmixed images (`mixing == 0.0`), applies gain-only camera response coefficients to blank-normalized linear RGB patch values, and builds `outputs/card8/twin_features.csv`.
+- **Run command:**
+  ```powershell
+  python scripts/build_twin_features.py
+  ```
+- **Generated output:**
+  - `outputs/card8/twin_features.csv` (feature table with 346 rows)
+  - `outputs/card7/dataset_labels/` (copied label CSVs)
+
+#### Script: `scripts/train_vial_model.py` (Card 8 Step 2: Twin Model Training & Threshold Selection)
+- **Purpose:** Trains two multi-output Random Forest regressors on twin data (Model LOW on `[low_r, low_g, low_b, fill_ml]`; Model HIGH on `[high_r, high_g, high_b, low_r, low_g, low_b, fill_ml]`). Evaluates on the 78-image twin tuning set (Recipes 5 and 11 held out) and chooses decision threshold 0.159 (Youden's J).
+- **Run command:**
+  ```powershell
+  python scripts/train_vial_model.py
+  ```
+- **Generated output:**
+  - `outputs/card8/model_low.joblib`
+  - `outputs/card8/model_high.joblib`
+  - `outputs/card8/model_threshold.json`
+  - `outputs/card8/twin_holdout_predictions.csv`
+
+#### Script: `scripts/test_vial_model.py` (Card 8 Step 3: Real-Vial Model Test & Baseline Comparison)
+- **Purpose:** Evaluates the twin-trained models on real Video 5 vials using blank-normalized linear RGB features (without camera gains) at the fixed 0.159 threshold. Evaluates rows (a) Card 3 color check, (b) model vs nominal shares, and (c) model vs 3rd vial prediction across 18 baseline vials, 16 tall vials, and small vials 1, 2, 4, 5. Computes clean vial share errors against nominal recipes.
+- **Run command:**
+  ```powershell
+  python scripts/test_vial_model.py
+  ```
+- **Generated output:**
+  - `outputs/card8/real_test.csv` (complete evaluation summary table)
+  - `outputs/card8/real_predictions.csv` (per-vial features, predictions, distances, and flags)
+  - `outputs/card8/real_clean_share_error.csv` (clean 3rd vial share error table; sim-to-real gap)
 
 ---
 

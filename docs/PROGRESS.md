@@ -2,7 +2,7 @@
 
 This is our team's lab notebook: what we did, what we found, and **why we did it that way**. It is written for teammates with no coding background and for judges who ask "why?". Add a section every time a task card is finished (newest work at the bottom of "What we did").
 
-*Last updated: Oct 22, 2026 (Cards 1–4, 3b, 10, and 6 done; twin render verified).*
+*Last updated: Oct 26, 2026 (Cards 1–4, 3b, 10, 6, 7, and 8 done).*
 
 ---
 
@@ -265,6 +265,26 @@ where $\Delta E_{\text{recipe gap}}$ is the $\Delta E2000$ between the two recip
 - **Decisions:** Use blank-normalized colors for the live test at CSI Station 3, add a "lighting changed: re-take reference vials" warning to the dashboard, and capture fresh reference vials under ambient room lighting on demo day.
 - **Showcase video:** outputs/card7/twin_showcase.mp4 (not committed to Git; archived on team Google Drive). A title card stating that the twin varies appearance only and does not simulate carryover, then our calibrated Recipe 7 liquid (blue) filling a vial to 70 mL as seen from FillCam, then a montage of 60 dataset images (different recipes, fill levels from about 16 to 72 mL, lighting, glare and mixing states). Known render artifact: thin vertical lines in the liquid, most likely because the liquid column is built from flat strips; real vials don't show them.
 
+### Card 8 · Twin-trained vial model tested on real vials (Oct 26)
+
+- **What:** we trained two small scikit-learn regressors (Random Forests) purely on the synthetic images rendered in Card 7 from the digital twin (`scripts/train_vial_model.py`). Model LOW uses `[low_r, low_g, low_b, fill_ml]` for all vials; Model HIGH uses `[high_r, high_g, high_b, low_r, low_g, low_b, fill_ml]` for tall vials ($\ge 60$ mL). Features are blank-normalized linear RGB values from the unmixed renders (`mixing == 0.0` (the twin's mixing gradient was found to be inverted and uncalibrated, so mixed renders were left out)), with gain-only camera response applied to map twin colors into the camera space (`scripts/build_twin_features.py`).
+- **Tuning set and threshold:** about 20% of the twin images (78 images) were held out as a **tuning set**, split by whole clean recipes (Recipes 5 and 11) and whole contamination pairs involving them (never random rows). On this tuning set, the regression MAE was 0.056 for orange share and 0.062 for blue share (mean MAE 0.059 in share units $[0..0.72]$). A decision threshold of **0.159** (Euclidean distance in dye share space) was chosen on this twin tuning set alone to separate clean vials from contaminated ones before any real vial was evaluated (`outputs/card8/model_threshold.json`).
+- **Sim-to-real gap on clean vials:** on the 10 real clean 3rd vials (outputs/card8/real_clean_share_error.csv) the mean share error is 0.062 orange and 0.054 blue. That average is flattering: the twin's dye strengths and camera gains were tuned in Card 7 to match these same 3rd vials for 8 of the 10 recipes. The honest measure is the two recipes never used in that tuning: Recipe 5 (share distance 0.170) and Recipe 11 (0.124), both near or above the 0.159 threshold. Recipe 10, the worst-calibrated recipe in Card 7, is off by 0.247. These offsets are why comparing with the recipe's shares (row b) gives false alarms on clean vials.
+- **Real-vial test results (`scripts/test_vial_model.py`):**
+  - **The twin-trained model did not beat the color check.**
+  - **Tall vials (16 vials, Recipes 7–14, against `judge_1` with 'unsure' counted as off):**
+    - **(a) Card 3 color check (HIGH, $\Delta E > 5$):** **8 of 8 caught**, **0 false alarms** (100.0% balanced accuracy).
+    - **(b) Model vs recipe nominal shares:** **5 of 8 caught**, **2 false alarms** on clean vials 11 and 17 (68.8% balanced accuracy).
+    - **(c) Model vs clean 3rd vial prediction:** **4 of 8 caught**, **0 false alarms** (75.0% balanced accuracy). Comparing against the clean 3rd vial removes the constant recipe offset and avoids false alarms, but catches only half the carryovers at the 0.159 threshold—a clear trade-off.
+  - **Small vials (vials 1, 2, 4, 5 against `judge_1` with 'unsure' counted as off):**
+    - Ground truth has 3 positive discolored vials (vial 1 `off`, vials 4 and 5 `unsure`) and 1 clean vial (vial 2 `matches`).
+    - **(a) Card 3 color check (LOW, $\Delta E > 5$):** **caught 3 of 3**, with **0 false alarms** (vials 1, 4, 5 flagged; vial 2 passed; 100.0% balanced accuracy).
+    - **(b) Model vs recipe nominal shares:** **caught 1 of 3** (vial 4 flagged; vial 1 missed, vial 5 missed), with **1 false alarm** on vial 2 (16.7% balanced accuracy).
+    - **(c) Model vs clean 3rd vial prediction:** **caught 1 of 3** (vial 4 flagged; vials 1 and 5 missed), with **0 false alarms** on vial 2 (66.7% balanced accuracy).
+    - With only 4 small vials in video 5, these numbers are reported strictly as counts, not statistical claims.
+- **Decision:** the simple color check remains the system decider across both tall and small vials. The twin-trained vial model is **not** added to the dashboard. Borderline vials ($2.0 \le \Delta E \le 5.0$) continue to route to the operator for a visual check. Share estimates on real vials are the model's guesses, not measurements, and we have no way to check them.
+- **Limits:** one human judge; only 4 small vials (counts, not proof); one recorded run. The threshold was chosen on twin images only. The camera gains were fitted on the real 3rd vials, which are references, not test vials (the same references Card 3 uses).
+
 ### Cosmos groundwork (Oct 13)
 
 
@@ -297,12 +317,11 @@ where $\Delta E_{\text{recipe gap}}$ is the $\Delta E2000$ between the two recip
 
 ## What's next
 
-1. **Card 8 (PLAN.md):** train small vial model on the twin dataset (special focus on 25–45 mL fills) and test against the real vials.
-2. **Card 9 (explanations):** explain flagged vials with Cosmos (version C: flagged vial crop + reference image + recipe info + measured $\Delta E$ and flush prediction), with explanations scored.
-3. **Dashboard lighting follow-up:** switch dashboard to blank-normalized colors for the live test, add a "lighting changed: re-take reference vials" warning, and take fresh reference vials under room lighting on demo day.
-4. **Card 10, step 10:** plug real Brev explanations into `outputs/explanations_cache.json`.
-5. **Teammate cold-start test:** teammate runs dashboard cold start from `RUNBOOK.md`.
-6. **Live test and final submission:** live test at CSI Station 3, video recording, 1-page summary.
+1. **Card 9 (explanations):** explain flagged vials with Cosmos (version C: flagged vial crop + reference image + recipe info + measured $\Delta E$ and flush prediction), with explanations scored.
+2. **Dashboard lighting follow-up:** switch dashboard to blank-normalized colors for the live test, add a "lighting changed: re-take reference vials" warning, and take fresh reference vials under room lighting on demo day.
+3. **Card 10, step 10:** plug real Brev explanations into `outputs/explanations_cache.json`.
+4. **Teammate cold-start test:** teammate runs dashboard cold start from `RUNBOOK.md`.
+5. **Live test and final submission:** live test at CSI Station 3, video recording, 1-page summary.
 
 ## Words used here
 
