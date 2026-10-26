@@ -44,7 +44,7 @@ Short summary of goals, data collected/generated and approach, answering:
 ## 4. Priorities this implies (Oct 26)
 
 1. **CSI session**: ask today for a slot this week and access to the `vial_fill` recording (or live feed). It is an explicit video requirement and a judging criterion.
-2. **"New recording" mode** for the dashboard, plus fresh references and the lighting warning, so a CSI recording can be processed on the day.
+2. **"New recording" mode** for the dashboard, plus fresh references and the lighting warning, so a CSI recording can be processed on the day. Plan: `PLAN.md`, "New-recording mode for the CSI session".
 3. **Card 9** (Cosmos explanations) → dashboard panel 3.
 4. **Submission package**: video, one-page summary, results table, references; Claude's review before submitting.
 5. Card 8 is done (Oct 26). Track B (twin mixing fix) only if time remains.
