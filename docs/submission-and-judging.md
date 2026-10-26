@@ -16,7 +16,7 @@ Summary of the organizers' "Submission and Judging Details" (received Oct 26), f
 | **Demonstrate the solution operating on the hardware in the CSI** | Nothing yet: all our footage is the supplied recording | **A CSI session.** Realistic version: CSI runs a planned recipe sequence, we observe, and process that recording with our system the same day. Needs a "new recording" mode in the dashboard and fresh reference vials under that day's lighting |
 | Identify the specific problem and why it matters | Vial 7 (green in a blue batch); the Teledyne check only knows known/unknown colors | Script the 40 seconds |
 | Explain impact on other manufacturers / generalization (scrap, rework, downtime, labor, other) | The mechanism (a shared path that carries the last product into the next) is common to any line that changes colors or products through shared piping | Real cost numbers only from CSI or mentors; otherwise describe the impact in kind (scrap avoided, flushes only when needed), not in invented dollars |
-| Show measured results against a baseline and where it falls short | Card 3 baseline; Card 3b (color check beat every Cosmos version); Card 4 advisor (rank correlation 0.79–0.82); blank normalization; Card 7 lighting test | Card 8 result; one results table for the video; the honest-limits slide (small vials, one judge, side lighting, 30 vials, one run) |
+| Show measured results against a baseline and where it falls short | Card 3 baseline; Card 3b (color check beat every Cosmos version); Card 4 advisor (rank correlation 0.79–0.82); blank normalization; Card 7 lighting test; Card 8 (twin-trained model did not beat the color check: tall vials 8/8 vs 5/8 or 4/8; small vials 3/3 vs 1/3) | One results table for the video; the honest-limits slide (small vials, one judge, side lighting, 30 vials, one run) |
 
 ## 2. Executive summary (1 page)
 
@@ -25,7 +25,7 @@ Short summary of goals, data collected/generated and approach, answering:
 | Question | Our answer, with evidence | Gap |
 | --- | --- | --- |
 | What problem(s) are you solving in manufacturing? | Off-recipe first vials after a recipe change (carryover through one shared pipe and nozzle); no warning, no "matches its recipe" check, no cause | — |
-| How does your project use Physical AI? | Isaac Sim digital twin: calibrated renders for appearance variation and a twin-trained model (Cards 6–8). Cosmos Reason: tested against color math (Card 3b) and used to explain flagged vials (Card 9) | Card 8 and Card 9 results |
+| How does your project use Physical AI? | Isaac Sim digital twin: calibrated renders for appearance variation and a twin-trained model tested on real vials, which did not beat the color check (Cards 6–8). Cosmos Reason: tested against color math (Card 3b) and used to explain flagged vials (Card 9) | Card 9 results |
 | **How did you use the physical equipment in the CSI?** | The supplied recordings of Station 3 | **The CSI session** (see the video gap) |
 | What evidence demonstrates that the problem is solved? | Card 3 (8/8 tall carryover vials caught, 0 false alarms on one judge's key), Card 4 (risk ranking), dashboard end-of-run table, Card 7 lighting test | CSI trial log; final results table; Claude review (`REVIEW.md`) |
 | Links to supporting material | GitHub repo: `docs/PROGRESS.md` (the reasoning), `RUNBOOK.md` (every command), `PLAN.md` | Make sure the repo's README points to these |
@@ -47,4 +47,4 @@ Short summary of goals, data collected/generated and approach, answering:
 2. **"New recording" mode** for the dashboard, plus fresh references and the lighting warning, so a CSI recording can be processed on the day.
 3. **Card 9** (Cosmos explanations) → dashboard panel 3.
 4. **Submission package**: video, one-page summary, results table, references; Claude's review before submitting.
-5. Card 8 (in progress), then Track B (twin mixing fix) only if time remains.
+5. Card 8 is done (Oct 26). Track B (twin mixing fix) only if time remains.

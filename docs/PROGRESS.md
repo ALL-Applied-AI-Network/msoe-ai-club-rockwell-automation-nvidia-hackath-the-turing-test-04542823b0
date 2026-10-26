@@ -275,7 +275,7 @@ where $\Delta E_{\text{recipe gap}}$ is the $\Delta E2000$ between the two recip
   - **Tall vials (16 vials, Recipes 7–14, against `judge_1` with 'unsure' counted as off):**
     - **(a) Card 3 color check (HIGH, $\Delta E > 5$):** **8 of 8 caught**, **0 false alarms** (100.0% balanced accuracy).
     - **(b) Model vs recipe nominal shares:** **5 of 8 caught**, **2 false alarms** on clean vials 11 and 17 (68.8% balanced accuracy).
-    - **(c) Model vs clean 3rd vial prediction:** **4 of 8 caught**, **0 false alarms** (75.0% balanced accuracy). Comparing against the clean 3rd vial removes the constant recipe offset and avoids false alarms, but catches only half the carryovers at the 0.159 threshold—a clear trade-off.
+    - **(c) Model vs clean 3rd vial prediction:** **4 of 8 caught**, **0 false alarms** (75.0% balanced accuracy). Comparing against the clean 3rd vial removes the recipe's offset and avoids false alarms, but catches only half the carryovers at the 0.159 threshold—a clear trade-off.
   - **Small vials (vials 1, 2, 4, 5 against `judge_1` with 'unsure' counted as off):**
     - Ground truth has 3 positive discolored vials (vial 1 `off`, vials 4 and 5 `unsure`) and 1 clean vial (vial 2 `matches`).
     - **(a) Card 3 color check (LOW, $\Delta E > 5$):** **caught 3 of 3**, with **0 false alarms** (vials 1, 4, 5 flagged; vial 2 passed; 100.0% balanced accuracy).
