@@ -1,5 +1,7 @@
 # PLAN: Card 7 · Calibrated twin renders for the small vials
 
+(Card 8, the twin-trained model, follows Card 7 further down this file.)
+
 Written by Claude Code for Gemini to carry out, **one step per prompt**. Each step says what to ask, how to check it worked, and what to commit. Do the steps in order; don't start a step until the one before it passes its check.
 
 **How to use this file:** on the Brev instance, start `agy` inside `/workspace/project/repo` (after `git pull` or a fresh repo copy) and say *"Read GEMINI.md and PLAN.md. Do Card 7 step N only, then tell me how to check it."* Laptop steps are marked **(laptop)**.
@@ -88,9 +90,41 @@ Card 3b showed the color check already works on tall vials (8 of 8 caught, 0 fal
 
 ---
 
-## After Card 7: Card 8 in one line
+# PLAN: Card 8 · Twin-trained vial model, tested on real vials (laptop)
 
-Train a small model on the twin images only to estimate the dye shares (and fill level) from the vial crop, with special attention to 25–45 mL fills. Test it only on the real vials, against the color check, small vials reported separately. A separate plan will follow once step 6's images exist.
+**Goal:** a small model trained **only on the Card 7 twin images** that estimates a vial's orange and blue share from its patch colors, then judges real vials by comparing that estimate with the recipe. It is tested on the real vials with the **same vials and answer keys as Card 3**, with the small vials reported separately. Everything runs on the laptop (scikit-learn, already in `requirements.txt`); no Brev.
+
+**Honest limits, written down before any result:**
+- Only 4 scored real vials are small (vials 1, 2, 4, 5). Whatever the model does there can't be proven statistically; it is reported as a count, not a percentage claim.
+- The model's yes/no threshold is chosen on twin images only, never on real vials. The camera-response curve (`outputs/card7/camera_response.json`) was fitted on the real 3rd vials only, which are references, not test vials.
+- If the model doesn't beat the color check, that is the result we report.
+
+## Step 1 · Twin features and labels (laptop)
+
+> "Read GEMINI.md and PLAN.md. Card 8 step 1 only. Copy the 1,000-image dataset's labels.csv files (all batches) into outputs/card7/dataset_labels/ (the images themselves stay on the team Drive). Write scripts/build_twin_features.py (one job) that makes outputs/card8/twin_features.csv with one row per twin image: the blank-normalized linear RGB of the LOW patch, of the HIGH patch (empty if the fill is below the HIGH patch), fill mL, and the labels orange share, blue share, and whether the image is a clean recipe or a contaminated mix. Apply the camera-response curve from outputs/card7/camera_response.json (the simpler gain-only version) to the twin colors. Print the row count, the share ranges, and how many rows have no HIGH patch. Do NOT commit."
+
+**Check:** about 1,000 rows; roughly half have no HIGH patch (small fills); shares range 0–0.72.
+**Commit:** `Card 8 step 1: twin features for the vial model`
+
+## Step 2 · Train the model on twin images only (laptop)
+
+> "Card 8 step 2 only. Write scripts/train_vial_model.py (one job) that trains two small scikit-learn regressors to predict orange share and blue share from the features in outputs/card8/twin_features.csv: one using LOW + fill mL (for every vial), one using HIGH + LOW + fill mL (tall vials only). Hold out 20% of the twin images, split by whole clean recipe or contamination pair (not random rows), and report the error in share units on that twin hold-out. Then choose the flag threshold on the twin hold-out only: the share distance (between predicted shares and the recipe's shares) that best separates clean images from contaminated ones; save both models and the threshold in outputs/card8/ (model files are git-ignored). Do NOT commit."
+
+**Check:** the share error on twin hold-out is small (well under 0.1); the threshold is a single number recorded before any real vial is touched.
+**Commit:** `Card 8 step 2: twin-trained vial model and twin-chosen threshold`
+
+## Step 3 · Test on the real vials (laptop)
+
+> "Card 8 step 3 only. Write scripts/test_vial_model.py (one job) that computes the same features for the real vials (blank-normalized LOW and HIGH from scripts/blank_check.py's measurements, recipe mL), predicts their shares with the saved models (HIGH model for tall vials, LOW model for short ones), and flags a vial when the share distance to its recipe exceeds the saved threshold. Score it exactly like baseline_check.py (same 18 vials, same three answer keys, the 16 tall vials separately) and also on the small vials 1, 2, 4 and 5 against judge_1. Make one table with three rows per key: (a) the Card 3 color check, (b) the twin-trained model vs the recipe's shares, (c) the twin-trained model vs its own prediction for the recipe's real 3rd vial (instead of the recipe's shares). Save outputs/card8/real_test.csv. Do NOT commit."
+
+**Check:** every number comes from the same vials and keys as Card 3. Row (c) usually helps when the model is biased; if (b) and (c) disagree a lot, the model's absolute shares are off but its comparisons may still work.
+**Commit:** `Card 8 step 3: real-vial test of the twin-trained model`
+
+## Step 4 · Write it down (laptop)
+
+> "Card 8 step 4. Add a 'Card 8' section to docs/PROGRESS.md (what we trained on, the twin hold-out error, the threshold chosen on twin data, the real-vial table with all three rows, the small-vial counts, and the honest limits listed at the top of this plan), the commands to RUNBOOK.md, and update GEMINI.md section 7. Show me the PROGRESS.md section before committing."
+
+**Commit:** `Card 8: twin-trained model results`
 
 ---
 
