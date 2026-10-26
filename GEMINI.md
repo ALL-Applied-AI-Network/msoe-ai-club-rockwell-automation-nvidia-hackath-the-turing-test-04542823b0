@@ -16,6 +16,8 @@ We are building **Carryover Copilot** for Dataset 2, Fluid Mixing Station 3, at 
 
 Deadlines: team plan Wed Oct 14, 11:59 PM CT · final submission Sun Nov 1, 11:59 PM CT (≈5-min video, one-page summary, repo link, references) · finals Thu Nov 5 at MSOE.
 
+**What the judges want (organizers' submission details, Oct 26):** the video must **show the solution operating on the CSI hardware**, the problem and why it matters, the impact on other manufacturers, and measured results against a baseline with where it falls short. The one-page summary must answer: what problem, how we use Physical AI, **how we used the physical equipment in the CSI**, and what evidence shows it works. Judging criteria and our gap list: `docs/submission-and-judging.md`.
+
 ---
 
 ## 1b. Organizer feedback on our team plan (read before planning any card)
@@ -133,6 +135,7 @@ We use **two** agents. We do **not** use Codex, GPT-6 Astra, or any other agent.
 ├── .env.example         # Template for .env (copy it; never commit .env)
 ├── docs/
 │   ├── organizer-feedback.md # Organizers' feedback on our team plan + what it changes
+│   ├── submission-and-judging.md # What the judges ask for, and our gaps against it
 │   ├── team-plan.md         # Copy of the team plan (Team plan tab of our doc)
 │   ├── beginner-playbook.md # Copy of the beginner playbook (task cards + prompts)
 │   ├── PROGRESS.md          # Plain-English progress log with the reasoning
