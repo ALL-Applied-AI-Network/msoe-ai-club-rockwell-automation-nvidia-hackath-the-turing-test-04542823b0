@@ -64,8 +64,8 @@ HIGH_PATCH = {
     "name": "HIGH",
 }
 
-# Cut point midway between largest empty pocket change (2.63) and smallest Video 5 vial change (13.92)
-DEFAULT_MIN_FILL_DE = 8.0
+# Cut point midway between largest empty pocket change (2.63) and smallest fill change (6.54)
+DEFAULT_MIN_FILL_DE = 4.6
 
 
 def extract_low_patch_lab(frame: np.ndarray) -> np.ndarray:
@@ -88,7 +88,8 @@ def detect_parked_vials(
     save_outputs: bool = True,
     lead_frames: int = 3,
     min_fill_de: float = DEFAULT_MIN_FILL_DE,
-) -> pd.DataFrame:
+    return_rejected: bool = False,
+) -> pd.DataFrame | tuple[pd.DataFrame, pd.DataFrame]:
     """
     Finds last parked frames for all filled vials in the video.
 
@@ -98,10 +99,13 @@ def detect_parked_vials(
         out_dir: Optional custom output directory (defaults to outputs/runs/<name>)
         save_outputs: If True, writes parked_vials.csv and contact_sheet.png
         lead_frames: Number of frames before index motion onset to sample parked vial (default 3)
-        min_fill_de: Minimum ΔE2000 change in LOW patch during parked interval to count as filled (default 8.0)
+        min_fill_de: Minimum ΔE2000 change in LOW patch during parked interval to count as filled (default 4.6)
+        return_rejected: If True, returns (df_vials, df_rejected) tuple instead of just df_vials
 
     Returns:
         pd.DataFrame with columns ['vial', 'frame', 'mp4_s', 'fill_dE', 'low_L']
+        (or tuple of (df_vials, df_rejected) if return_rejected is True).
+        Note: df_vials.attrs['rejected'] also always contains df_rejected.
     """
     video_path = Path(video_path)
     if not video_path.exists():
@@ -173,6 +177,7 @@ def detect_parked_vials(
 
     # Check each candidate move for liquid fill change in LOW patch during parked interval
     detected_vials = []
+    rejected_intervals = []
     saved_frames = {}
     prev_end = 0
 
@@ -209,12 +214,25 @@ def detect_parked_vials(
                 }
             )
             saved_frames[vial_num] = frame_last
+        else:
+            rejected_intervals.append(
+                {
+                    "interval": idx + 1,
+                    "first_frame": first_frame,
+                    "frame": target_frame,
+                    "mp4_s": round(target_frame / fps, 3),
+                    "fill_dE": round(fill_dE, 2),
+                    "low_L": round(l_star, 1),
+                }
+            )
 
         prev_end = e
 
     cap.release()
 
     df_results = pd.DataFrame(detected_vials)
+    df_rejected = pd.DataFrame(rejected_intervals)
+    df_results.attrs["rejected"] = df_rejected
 
     if save_outputs:
         if out_dir is None:
@@ -231,12 +249,19 @@ def detect_parked_vials(
         df_to_save.to_csv(csv_path, index=False)
         print(f"Saved: {csv_path} ({len(df_results)} vials)")
 
-        # 2. Generate contact sheet
+        # 2. Save rejected_intervals.csv if any
+        if len(df_rejected) > 0:
+            rej_path = target_out / "rejected_intervals.csv"
+            df_rejected.to_csv(rej_path, index=False)
+
+        # 3. Generate contact sheet
         if len(detected_vials) > 0:
             sheet_path = target_out / "contact_sheet.png"
             create_contact_sheet(detected_vials, saved_frames, sheet_path, name)
             print(f"Saved contact sheet: {sheet_path}")
 
+    if return_rejected:
+        return df_results, df_rejected
     return df_results
 
 
@@ -450,7 +475,9 @@ def main():
         help="Custom output directory (overrides outputs/runs/<name>/)",
     )
     parser.add_argument(
+        "--min-fill-de",
         "--min_fill_de",
+        dest="min_fill_de",
         type=float,
         default=DEFAULT_MIN_FILL_DE,
         help=f"Minimum ΔE2000 in LOW patch between start and end of parked interval to count as filled (default: {DEFAULT_MIN_FILL_DE})",
