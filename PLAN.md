@@ -184,6 +184,7 @@ Ask, in the same thread as the session request:
 > "New-recording mode step 3 only. In scripts/vial_check.py add a normalized check next to the existing raw one (keep the raw one unchanged): measure the vial's patch and the neighbour vial's blank at the same height (BLANK_HIGH x 410–426, y 268–288; BLANK_LOW x 410–426, y 352–372), T = linear patch ÷ linear blank, normalized color = T × the run's median blank, then Lab and ΔE2000 against the reference vial's normalized color, same verdict cut points. Detect an empty neighbour pocket automatically: blank L* more than 5 away from the run's median blank → use the run's median blank and mark blank_fallback. Add the lighting warning: if the vial's raw blank color differs from its reference vial's raw blank by ΔE2000 > 3.0, return the warning 'lighting changed since this recipe's reference vial: re-take the reference vial'. Test on the video 5 practice run: list which vials get blank_fallback, how many lighting warnings fire, and every vial whose normalized verdict differs from the raw verdict. Then a made-up lighting change: darken only the frames of vials 19 and 20 by 25% (linear) and run again. Do NOT commit."
 
 **Check:** blank_fallback on exactly vials 6, 24 and 30 (matching `scripts/blank_check.py`); **0** lighting warnings on video 5 (if any fire, show me before touching the 3.0); normalized verdicts catch the same vials as Card 3 (HIGH 8 of 8, 0 false alarms). With vials 19 and 20 darkened: warnings on exactly vials 19 and 20, and their normalized verdicts don't change. Say plainly that the warning catches overall brightness changes; light from one side fooled both methods in the Card 7 twin test, so the warning is a prompt to re-take references, not a guarantee.
+(Done Oct 27, accepted: blank_fallback on 6, 24, 30; 0 warnings on video 5, but the largest natural blank change was 2.75 (vial 29), close to the 3.0 cut, so an occasional false 'lighting changed' warning at CSI is possible; the warning never changes a verdict. Raw and normalized verdicts identical on all 30; darkening vials 19 and 20 fired warnings on exactly those two, normalized verdicts unchanged, while raw vial 20 went PASS → UNSURE.)
 **Commit:** `New-recording mode step 3: blank-normalized check and lighting warning`
 
 ## Step 4 · Risk lights from the run's own references (laptop, about 30 min)
@@ -207,12 +208,59 @@ Ask, in the same thread as the session request:
 **Check:** every failure prints a plain-English message saying what to fix. Then a teammate who didn't build it runs the video 5 practice run from RUNBOOK.md alone (this also counts as Card 10's cold-start test).
 **Commit:** `New-recording mode step 6: CSI session-day runbook and failure messages`
 
+## Step 6b · Write it down (laptop, about 20 min)
+
+> "New-recording mode step 6b. Add a 'New-recording mode' section to docs/PROGRESS.md: what it does and why (the judges want the system on CSI hardware; video 5's vial frames were found by hand); the fill test (LOW patch change during the parked interval, cut 4.6, between the largest empty-pocket change 2.63 and the palest fill 6.54; no clear-only fill seen yet); the video 5 practice result (30 of 30 found, all verdicts identical); blank normalization and the lighting warning (0 warnings on video 5, largest natural blank change 2.75 against the 3.0 cut; the darkening test); and the limits (light from one side fools both checks; references come from the same recording). Update GEMINI.md section 7 and RUNBOOK.md's Current outputs table. Show me the PROGRESS.md section before committing."
+
+**Check:** every number above appears exactly as written; no 'proves', 'guarantees' or 'eliminates'.
+**Commit:** `New-recording mode: docs`
+
 ## Step 7 · At CSI (whole team, no code changes on the day)
 
 1. Before the run: tag the commit (`git tag csi-session-v1`), copy `outputs/explanations_cache.json` to the laptop, confirm the camera is untouched. Observe only; nobody touches the station.
 2. During the run: one teammate fills the paper judge sheet by eye for every vial; one films the station and the screen.
 3. After the run: copy the recording and recipe list into `data/runs/csi_<date>/`, type the judge sheet into `outputs/runs/csi_<date>/judge_verdicts.csv` **before** running the system, then run `new_run.py` and the dashboard. Keep every attempt in the trial log, including failures and reruns.
 4. Report the result honestly, whatever it is, with the same counts as Card 3 (caught, false alarms, misses), plus the lighting warnings and any vials the detector missed.
+5. **If no visit is possible:** ask CSI to record the sequence and send the `vial_fill` .mp4 and recipe list; process it the same way and say plainly in the video that CSI ran the station and we processed their recording. Never present video 5 as the CSI session.
+6. Afterwards: add a 'CSI session' section to docs/PROGRESS.md with the trial log counts, and commit the judge sheet as `annotations/csi_<date>_judge_verdicts.csv` (a hand-typed answer key, not camera data).
+
+---
+
+# PLAN: Card 9 · Cosmos explanations for flagged vials (laptop + Brev Cosmos)
+
+**Goal:** a short, checkable explanation for each flagged vial, written by Cosmos 3 Nano Reasoner from the camera evidence and the recipes (organizer feedback: ground every explanation in the current recipe, the previous recipe and the camera evidence). Cosmos explains; the color check still decides (Card 3b).
+
+**Scope (time is short):** version C only (vial crop + reference crop + recipe text + our measured ΔE and the advisor's light). The A/B comparison is not run; say so in the docs. Test set: the 8 flagged first vials of video 5 with a known previous recipe: vials 4, 7, 10, 16, 19, 22, 25, 28 (vial 13, 8 → 9, passed the color check, so it never reaches Cosmos).
+
+**Honest-scoring rules, written before any result:** the prompt and the scoring rubric are committed **before** the Brev run, and nothing in them changes after seeing answers. A teammate scores every answer against the rubric. The cache stores the **first** repeat for each recipe change, not the best-looking one.
+
+## Step 1 · explain.py and the rubric (laptop, about 45 min)
+
+> "Read GEMINI.md and PLAN.md. Card 9 step 1 only. Write scripts/explain.py (one job: ask Cosmos to explain one flagged vial) on top of scripts/ask_cosmos.py, using the same request format. Inputs for a vial: its liquid crop and the clean reference crop of its recipe from outputs/card3b/crops/, and as text: the intended recipe (number and mL from T-200 orange, T-400 blue, T-100 clear), the previous recipe (same), the dispense order T-200 → T-400 → T-100 through one shared pipe and nozzle, the patch used, the measured ΔE2000 against the reference, the verdict, and the flush advisor's light for that change. System prompt: 'You inspect vials on a color-mixing line. Image 1 is the vial being checked, image 2 is a clean vial of the same recipe. Use only the facts given; do not invent numbers or say a flush has been tested. Answer only in JSON with keys matches_recipe (true/false), observed_color, likely_cause, operator_action, confidence (low/medium/high).' Add --vials, --repeats (default 3), --dry-run (prints the full prompt for each vial without calling Cosmos), and save every answer to outputs/card9/explanations.csv (vial, change e.g. 6->7, repeat, raw answer, parsed fields, seconds). With --cache, put the first repeat of each change into outputs/explanations_cache.json via scripts/explanation_cache.py. Also write annotations/card9_rubric.md with this rubric: an explanation is CORRECT only if (1) matches_recipe is false; (2) it names the previous recipe or its color; (3) the cause is leftover of the previous recipe in the shared path or nozzle; (4) the action invents nothing (no made-up numbers, no claim that a flush is proven); (5) observed_color is a fair description of image 1 (the scorer looks at the crop). Run --dry-run for vial 7. Do NOT commit; show me the vial 7 prompt."
+
+**Check:** the vial 7 prompt says Recipe 7 (50 mL blue + 20 mL clear), previous Recipe 6 (10 mL orange + 30 mL clear), ΔE about 25.6 on HIGH, FAIL, advisor RED, and the images go **before** the text. No numbers in it that aren't in our outputs.
+**Commit (before any Cosmos run):** `Card 9 step 1: explain.py (version C) and the frozen scoring rubric`
+
+## Step 2 · Run it on Brev (Cosmos instance, about 30 min of GPU)
+
+Follow RUNBOOK.md, "Cosmos: start the server" (Nebius L40S, JupyterLab terminal, `nvidia-smi` shows CUDA 12.9 or higher, then `docker start cosmos`, then the ready check). Upload `scripts/explain.py`, `scripts/ask_cosmos.py`, `scripts/explanation_cache.py` and `outputs/card3b/crops/` as in the Card 3b run, then:
+
+```bash
+python3 explain.py --vials 4 7 10 16 19 22 25 28 --repeats 3 --cache
+```
+
+Download `outputs/card9/explanations.csv` and `outputs/explanations_cache.json` (right-click → Download) into the same folders on the laptop. **Stop** the instance (Stop, never Delete), log the hours, and never paste the NVIDIA key into a chat.
+
+**Check:** 24 rows; every answer parsed as JSON (or the raw text is kept when it didn't); `python scripts/explanation_cache.py --show` on the laptop lists 8 changes.
+
+## Step 3 · Score, plug in, write down (laptop, about 1 hour)
+
+1. A teammate who didn't write the prompt scores the **first** repeat of each of the 8 vials with `annotations/card9_rubric.md`, looking at each crop, and types the result into `annotations/card9_scores.csv` (vial, change, correct yes/no, which rubric point failed). Also count how many vials got the same matches_recipe and cause in all 3 repeats.
+2. Card 10 step 10 (above): replay the dashboard; vial 7's panel 3 shows the cached 6->7 explanation, and still does with the Brev instance stopped.
+3. > "Card 9 step 3. Add a 'Card 9' section to docs/PROGRESS.md: version C only (A/B not run), the 8 vials, the frozen rubric, the score as 'N of 8 fully correct' with which points failed, the repeat consistency, seconds per call, and one example explanation quoted exactly (6->7). Update GEMINI.md section 7 and RUNBOOK.md. Show me the section before committing."
+
+**Check:** the score is a count out of 8 straight from `annotations/card9_scores.csv`; any wrong explanations are listed, not hidden.
+**Commit:** `Card 9: Cosmos explanations, scored` (scripts, rubric and scores only; the cache and CSVs in outputs/ stay local; copy the cache to the demo laptop).
 
 ## Not in these plans (decide later)
 

@@ -48,3 +48,16 @@ Short summary of goals, data collected/generated and approach, answering:
 3. **Card 9** (Cosmos explanations) → dashboard panel 3.
 4. **Submission package**: video, one-page summary, results table, references; Claude's review before submitting.
 5. Card 8 is done (Oct 26). Track B (twin mixing fix) only if time remains.
+
+## 5. Before submitting: self-review checklist (if Claude isn't available)
+
+Ask Gemini: *"Read docs/PROGRESS.md and the draft one-pager and video script. List every number in the drafts and the PROGRESS.md line it comes from; list any number with no source."* Then check by hand:
+
+1. **Every number has a source** in docs/PROGRESS.md (or the CSI trial log). Delete any number that doesn't.
+2. **Banned words** unless literally true: proves, guarantees, eliminates, exact, real-time, outperforms, confirms, 100% (say "8 of 8" instead), "simulates carryover" (the twin doesn't).
+3. **The counts are honest:** say "8 of 8 on one judge's answer key, 16 tall vials", not "100% accuracy". Small vials are counts, not percentages.
+4. **The limits slide is in:** one recorded run (plus the CSI session, if it happened), one human judge, 30 vials, small vials barely tested, light from one side fools the check, Cosmos explains but doesn't decide, the twin-trained model didn't beat color math.
+5. **CSI is described exactly as it happened:** "we processed CSI's recording on site", not "live" unless it really was live.
+6. **Credit:** Ayden's ideas (blank normalization, anchored gradient, calibration loop, mixing state); the organizers' datasets and twin; NVIDIA Isaac Sim and Cosmos; the AI coding tools (Gemini, Claude Code).
+7. **Nothing secret or heavy in the repo:** no `.env`, keys, videos, zips or images (`git ls-files | findstr /i ".env .mp4 .zip .png .jpg"` on Windows should show only small committed figures, if any).
+
