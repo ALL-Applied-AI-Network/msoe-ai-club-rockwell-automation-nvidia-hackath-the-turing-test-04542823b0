@@ -164,6 +164,10 @@ All active project outputs are organized into per-card subdirectories under `out
 | `outputs/runs/<name>/` | `contact_sheet.png` | `scripts/detect_parked_vials.py` | Visual verification grid of all detected parked vial frames with LOW and HIGH patches drawn |
 | `outputs/runs/<name>/` | `vials.csv` | `scripts/new_run.py` | Verified run table with recipes, volumes, last parked frames, mp4 timestamps, and reference assignments |
 | `outputs/runs/<name>/` | `trial_log.csv` | `app/dashboard.py` | Live operator trial log recording timestamps, recipes, risk lights, verdicts, $\Delta E$, patch, and timings |
+| `annotations/` | `card9_rubric.md` | Human review rubric | 5-point quality and safety rubric frozen before Brev Cosmos explanation evaluation |
+| `annotations/` | `card9_scores.csv` | Human evaluation | Teammate review scores on first repeats of all 8 flagged test vials against frozen rubric |
+| `outputs/card9/` | `explanations.csv` | `scripts/explain.py` (on Brev) | 24 raw Cosmos responses, parsed JSON fields, and call latencies (8 vials × 3 repeats) |
+| `outputs/` | `explanations_cache.json` | `scripts/explanation_cache.py` | JSON cache of first-repeat Cosmos explanations per recipe change key (e.g. `6->7`) |
 
 ---
 
@@ -606,6 +610,27 @@ The build.nvidia.com page has no hosted Python example for Cosmos 3; its **Deplo
 - **Expected output:** `Asking nvidia/cosmos3-nano-reasoner at http://127.0.0.1:8000/v1 ...`, then `--- Cosmos reasoning ---` (with `--think`) and `--- Cosmos answer ---`.
 - **If it fails:** "Could not reach Cosmos" means the container or the port forward isn't running. "rejected the API key" means `NVIDIA_API_KEY` in `.env` is wrong (only matters for a hosted endpoint).
 
+### Script: `scripts/explain.py`
+- **Purpose:** Generates structured Cosmos explanations for flagged vials (version C prompt: vial liquid crop + reference liquid crop + recipe dosing + dispense order + measured $\Delta E_{2000}$ + flush advisor risk light).
+- **Run command (dry run):**
+  ```powershell
+  python scripts/explain.py --dry-run --vials 7
+  ```
+- **Run command (Brev live NIM execution):**
+  ```bash
+  python3 explain.py --vials 4 7 10 16 19 22 25 28 --repeats 3 --cache
+  ```
+- **Inputs:** `outputs/card3b/crops/`, `outputs/card3/baseline_results.csv`, `outputs/card3b/manifest.csv`.
+- **Outputs:** `outputs/card9/explanations.csv` (all repeats and latencies) and `outputs/explanations_cache.json` (first repeats cached).
+
+### Script: `scripts/explanation_cache.py`
+- **Purpose:** Manages looking up and displaying cached Cosmos explanations per recipe change key (e.g. `6->7`).
+- **Run command:**
+  ```powershell
+  python scripts/explanation_cache.py --show
+  ```
+- **Outputs:** Displays cached JSON explanations or "no explanations cached yet". Supports `--put-test` and `--clear-test` for test harness verification.
+
 ---
 
 ## 4. Operator Dashboard (Carryover Copilot)
@@ -654,9 +679,11 @@ This opens a browser tab at `http://localhost:8501`.
    - Shows a large status banner: `🟢 PASS (In Spec)`, `🟡 UNSURE (Borderline)`, `🔴 FAIL (Discolored)`, or a gray `⚪ REFERENCE (not checked)` banner for clean 3rd vials.
    - Interactive controls: **▶ Next Vial**, **⏮ Reset (V1)**, **Jump to vial slider**, and **Auto-play (3s)**.
 4. **Panel 3 — Cosmos Explanation (Right):**
-   - Will show Cosmos explanations once Card 9 generates them (PLAN.md step 10); today it shows the evidence line and "Explanation unavailable (Cosmos not running)".
-   - Displays a comprehensive physical camera evidence breakdown: intended recipe, previous recipe (explaining "2nd vial of the batch" where applicable, and "recording starts here" for Vial 1), observed color shift (measured vs reference Lab), color distance $\Delta E$, and camera video frame number.
-   - For PASS vials, shows "No explanation needed". For UNSURE vials, shows "Check by eye (vial model not built)".
+   - Shows reviewed and approved Cosmos explanations from `annotations/card9_scores.csv` (approved change `6->7` displayed with likely cause and operator action).
+   - For cached explanations that failed human review (e.g. `7->8`, `9->10`, etc.), displays `⚠️ Explanation withheld: failed review (annotations/card9_scores.csv)` to prevent operator exposure to hallucinations, while preserving physical evidence.
+   - For recipe transitions without cached explanations, displays `⚠️ Explanation unavailable (Cosmos not running)`.
+   - In all cases, displays a comprehensive physical camera evidence breakdown: intended recipe, previous recipe (explaining "2nd vial of the batch" where applicable, and "recording starts here" for Vial 1), observed color shift (measured vs reference Lab), color distance $\Delta E$, and camera video frame number.
+   - For PASS vials, shows "No explanation needed". For UNSURE vials, shows "Check by eye (borderline vial)".
 5. **Inference Cascade Counter (Bottom):**
    - Shows throughput across all 4 cascade steps:
      - **Step 1 (Pre-Fill):** 9 recipe transitions evaluated before dispensing (100% queue advisory).

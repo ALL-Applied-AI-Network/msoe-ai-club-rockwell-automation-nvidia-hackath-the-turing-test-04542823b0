@@ -306,6 +306,25 @@ where $\Delta E_{\text{recipe gap}}$ is the $\Delta E2000$ between the two recip
 - **One command and rehearsed failures:** A single command builds the run: `python scripts/new_run.py --video data/runs/<name>/video.mp4 --recipes data/runs/<name>/recipes.csv --name <name>`. Four failure scenarios were rehearsed to ensure no raw Python tracebacks: wrong video path (clean missing file notice), missing recipe row (clean count mismatch listing rejected intervals and `--min-fill-de`), column typos like `recipe_num` or `t200ml` (clean unrecognized column error), and camera shifted +20 px right (glass-edge check flags patch touching vial wall).
 - **Limits:** light from one side fooled both checks in the Card 7 twin test; normalization cancels only even brightness changes. The lighting-warning margin is thin (largest natural change 2.75 against the 3.0 cut), so an occasional false warning is possible; the warning never changes a verdict. References come from the same recording: each recipe needs at least 2 vials, preferably 3, because with only 2 the reference is the 2nd vial, which can still carry leftover tint (vials 5 and 29 in video 5 did). The fill test was tuned on video 5 and checked by eye on videos 1–4; no clear-only fill has been seen.
 
+### Card 9: Cosmos explanations for flagged vials (Oct 29)
+
+- **Setup and scope:** We ran NVIDIA Cosmos 3 Nano Reasoner (`nvcr.io/nim/nvidia/cosmos3-reasoner`) on an L40S GPU on Brev (`scripts/explain.py`). Due to time constraints, version C was tested alone (A/B prompt comparison was not run). Version C gives Cosmos the flagged vial crop, a clean reference crop of the recipe, the recipe numbers and volumes, the station dispense order (T-200 orange → T-400 blue → T-100 clear through a shared pipe and nozzle), our measured CIELAB $\Delta E_{2000}$, the color check verdict, and the flush advisor's pre-fill risk light.
+- **Evaluation set and frozen rubric:** We tested the **8 flagged first vials** of video 5 with known previous recipes (vials 4, 7, 10, 16, 19, 22, 25, 28; vial 13 passed the color check so it never reached Cosmos). Each vial was run for **3 repeats** (24 calls total, saved to `outputs/card9/explanations.csv`). A teammate scored the **first repeat** of each vial against a 5-point rubric frozen before any Brev run (`annotations/card9_rubric.md`), saved in `annotations/card9_scores.csv`. Because the prompt provided our verdict and the previous recipe, this scores whether Cosmos stays consistent with physical evidence and avoids hallucination, **never detection accuracy**.
+- **Results:** Exactly **1 of 8 explanations was fully correct** (vial 7, transition 6 → 7, orange into blue). Across individual rubric criteria on the 8 first repeats:
+  - **Said it doesn't match:** **8 of 8** (we gave it the FAIL verdict in the prompt).
+  - **Named the previous recipe:** **2 of 8** (vials 4 and 7 named Recipe 5 and Recipe 6; other explanations either said "previous recipe" without contents or omitted it).
+  - **Right cause:** **4 of 8** (vials 4, 7, 16 and 22 cited leftover from the previous recipe in the shared line; the others blamed a wrong dispense order, the measurement patch, misrouted tubing or a hedged mix of causes).
+  - **Invented nothing:** **4 of 8** (vials 4, 7, 16, 19 made no false claims; others invented "Recipe 12 cleaning solution", misrouted tubing, or reversed valve orders).
+  - **Fair color description:** **2 of 8** (vials 7 and 25; dark mixtures were described as "dark red" or "deep blue" where the liquid was actually dark green or dark cyan).
+  - **Confidence:** **24 of 24** answers claimed `"confidence": "high"`, even when hallucinating hardware faults or nonexistent cleaning chemicals.
+- **Repeat consistency:** Only **2 of 8 vials** (vials 4 and 7) gave the same `matches_recipe` and the same kind of cause (carryover / previous recipe residue in the shared line) across all 3 repeats. On the other 6 vials, explanations drifted between residue, wrong colorant dispense order, measurement patch errors, valve timing, and misrouted tubing.
+- **Quoted explanation (Recipe 6 → 7, vial 7):**
+  > Observed color: `"dark green"`  
+  > Likely cause: `"residual orange dye from previous recipe (Recipe 6) mixed with blue and clear components of Recipe 7, creating an unintended dark green hue due to the shared nozzle and pipe not being fully flushed between recipes"`  
+  > Operator action: `"flush the line thoroughly with the correct recipe components until the color matches the reference vial before dispensing the next batch"`
+- **Likely reasons (not tested):** many first vials are very dark in the crops, so there is little color for the model to go on and it seems to guess from the recipe text, as in Card 3b; and it read the dispense order we gave it as a possible cause ('incorrect colorant order').
+- **System decision (Reviewed explanation library):** The color check decides pass/fail, never Cosmos. To protect the operator from plausible hallucinations, Cosmos explanations reach the dashboard only after a person approves them once per recipe change (`annotations/card9_scores.csv`). Approved explanations (such as 6 → 7) are displayed in the dashboard; unapproved explanations are withheld (`"Explanation withheld: failed review (annotations/card9_scores.csv)"`), and recipe changes with no cached explanation show `"Explanation unavailable"`.
+
 ---
 
 ## Decisions and the science behind them
@@ -326,10 +345,8 @@ where $\Delta E_{\text{recipe gap}}$ is the $\Delta E2000$ between the two recip
 
 ## What's next
 
-1. **Card 9 (explanations):** explain flagged vials with Cosmos (version C: flagged vial crop + reference image + recipe info + measured $\Delta E$ and flush prediction), with explanations scored.
-2. **Card 10, step 10:** plug real Brev explanations into `outputs/explanations_cache.json`.
-3. **Teammate cold-start test:** teammate runs video 5 practice run and dashboard from `RUNBOOK.md`.
-4. **Live test and final submission:** live test at CSI Station 3, video recording, 1-page summary.
+1. **Teammate cold-start test:** teammate runs video 5 practice run and dashboard from `RUNBOOK.md`.
+2. **Live test and final submission:** live test at CSI Station 3, video recording, 1-page summary.
 
 ## Words used here
 

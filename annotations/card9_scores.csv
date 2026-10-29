@@ -1,0 +1,9 @@
+vial,change,correct,failed_criteria,scorer,notes
+4,5->6,no,5,Mike Herza,"observed ""dark red"" but the vial is dark green"
+7,6->7,yes,,Mike Herza,
+10,7->8,no,2;3;4;5,Mike Herza,"cause ""incorrect colorant order""; invents a different dispense order; vial is dark cyan not dark green"
+16,9->10,no,2;5,Mike Herza,"""previous recipe"" named without its contents; vial is dark green not deep blue"
+19,10->11,no,2;3;5,Mike Herza,cause hedged between wrong dispensing order and insufficient flush; vial is dark cyan
+22,11->12,no,2;4;5,Mike Herza,"invents a ""Recipe 12 cleaning solution""; vial is dark yellow-green/brown not deep red"
+25,12->13,no,2;3;4,Mike Herza,"cause ""misrouted tubing""; action ""isolate the T-400 tube"" is invented"
+28,13->14,no,2;3;4;5,Mike Herza,"cause ""incorrect order of dispensing""; vial is dark brown not green"

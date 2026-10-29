@@ -173,6 +173,23 @@ def get_cached_run_references(vials_csv_str: str, video_mp4_str: str):
 
 # Cache recipe composition descriptions
 @st.cache_data
+def get_reviewed_scores(scores_path_str: str = "annotations/card9_scores.csv") -> dict[str, bool]:
+    p = Path(scores_path_str)
+    if not p.exists():
+        return {}
+    try:
+        df = pd.read_csv(p)
+        return {
+            str(row["change"]).strip(): (str(row["correct"]).strip().lower() == "yes")
+            for _, row in df.iterrows()
+            if "change" in row and "correct" in row
+        }
+    except Exception:
+        return {}
+
+
+# Cache recipe composition descriptions
+@st.cache_data
 def get_cached_recipe_descriptions(vials_csv_str: str | None = None):
     lookup = {}
     if vials_csv_str is not None:
@@ -773,11 +790,19 @@ if prereqs_ok:
                 cached_exp = get_explanation(prev_batch_r, target_r)
 
                 if cached_exp:
-                    st.markdown("#### 🔍 Likely Cause:")
-                    st.warning(f"**{cached_exp.get('likely_cause', '')}**")
+                    scores_map = get_reviewed_scores()
+                    change_key = f"{prev_batch_r}->{target_r}"
+                    is_approved = scores_map.get(change_key, False)
 
-                    st.markdown("#### 🛠️ Operator Action:")
-                    st.success(f"**{cached_exp.get('operator_action', '')}**")
+                    if is_approved:
+                        st.markdown("#### 🔍 Likely Cause:")
+                        st.warning(f"**{cached_exp.get('likely_cause', '')}**")
+
+                        st.markdown("#### 🛠️ Operator Action:")
+                        st.success(f"**{cached_exp.get('operator_action', '')}**")
+                    else:
+                        st.warning("### ⚠️ Explanation withheld: failed review (annotations/card9_scores.csv)")
+                        st.caption("Cosmos generated an explanation, but human review rejected it against the quality/safety rubric.")
                 else:
                     st.warning("### ⚠️ Explanation unavailable (Cosmos not running)")
                     st.caption("Cosmos NIM reasoner server not connected or explanation not cached yet.")
