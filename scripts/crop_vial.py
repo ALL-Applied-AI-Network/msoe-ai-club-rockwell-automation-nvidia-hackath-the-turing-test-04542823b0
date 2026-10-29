@@ -83,12 +83,20 @@ def get_patch_median_cielab(frame: np.ndarray, patch_def: dict) -> tuple[float, 
 
 
 def detect_glass_edges(gray: np.ndarray, y_min: int, y_max: int) -> tuple[int, int]:
-    """Detects left and right glass edges along x in [260, 360] over a vertical span."""
-    strip = gray[y_min:y_max, 260:360].mean(axis=0).astype(float)
+    """Detects left and right glass edges along x in [250, 380] over a vertical span."""
+    x_offset = 250
+    strip = gray[y_min:y_max, x_offset:380].mean(axis=0).astype(float)
     grad = np.gradient(strip)
-    left_x = 260 + 10 + int(np.argmax(np.abs(grad[10:35])))
-    right_x = 260 + 65 + int(np.argmax(np.abs(grad[65:90])))
-    return left_x, right_x
+    best_score = -1e9
+    best_l, best_r = (287, 333)
+    for l_idx in range(15, 75):
+        for r_idx in range(l_idx + 35, min(l_idx + 55, len(strip) - 5)):
+            score = -grad[l_idx] + grad[r_idx]
+            if score > best_score:
+                best_score = score
+                best_l = x_offset + l_idx
+                best_r = x_offset + r_idx
+    return best_l, best_r
 
 
 def draw_patches_on_crop(

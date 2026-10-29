@@ -54,6 +54,29 @@ if hasattr(sys.stdout, "reconfigure"):
         pass
 
 
+# Allowed recipe columns (matches template and dataset format)
+KNOWN_RECIPE_COLUMNS = {
+    "vial",
+    "recipe_id",
+    "t200_ml",
+    "t400_ml",
+    "t100_ml",
+    "t300_ml",
+    "total_ml",
+    "is_reference",
+    "dispense_order",
+    "color_purpose",
+    "type",
+    "start_time",
+    "end_time",
+    "start_s",
+    "end_s",
+    "duration_s",
+    "start_frame",
+    "end_frame",
+}
+
+
 def validate_recipes(df_recipes: pd.DataFrame) -> tuple[bool, str, pd.DataFrame]:
     """
     Validates recipe table against physical station constraints.
@@ -63,10 +86,26 @@ def validate_recipes(df_recipes: pd.DataFrame) -> tuple[bool, str, pd.DataFrame]
     """
     df = df_recipes.copy()
 
+    # Check for unrecognized columns (e.g. typos like recipe_idx, t200ml)
+    for col in df.columns:
+        if col not in KNOWN_RECIPE_COLUMNS:
+            return (
+                False,
+                f"Unrecognized column '{col}' in recipe CSV.\n"
+                f"Expected columns matching annotations/run_recipes_template.csv:\n"
+                f"  vial, recipe_id, t200_ml, t400_ml, t100_ml, is_reference",
+                df,
+            )
+
     required_cols = ["vial", "recipe_id"]
     for col in required_cols:
         if col not in df.columns:
-            return False, f"Missing required column '{col}' in recipe CSV.", df
+            return (
+                False,
+                f"Missing required column '{col}' in recipe CSV.\n"
+                f"Please ensure your CSV matches annotations/run_recipes_template.csv.",
+                df,
+            )
 
     # Fill volume columns if missing or null
     for tank in ["t200_ml", "t400_ml", "t100_ml"]:
@@ -226,11 +265,41 @@ def build_new_run(
     print(f"Output:  {out_dir}")
     print(f"=======================================================\n")
 
-    if not recipes_csv.exists():
-        print(f"ERROR: Recipe list file not found: {recipes_csv}", file=sys.stderr)
+    if not video_path.exists():
+        print(
+            f"ERROR: Video file not found: {video_path}\n"
+            f"Please check the path to your vial_fill recording (.mp4).",
+            file=sys.stderr,
+        )
         sys.exit(1)
 
-    df_recipes_raw = pd.read_csv(recipes_csv)
+    cap_test = cv2.VideoCapture(str(video_path))
+    if not cap_test.isOpened():
+        print(
+            f"ERROR: Could not open video file: {video_path}\n"
+            f"Please verify that the file is a valid, readable MP4 video.",
+            file=sys.stderr,
+        )
+        sys.exit(1)
+    cap_test.release()
+
+    if not recipes_csv.exists():
+        print(
+            f"ERROR: Recipe list file not found: {recipes_csv}\n"
+            f"Please create one using annotations/run_recipes_template.csv as a guide.",
+            file=sys.stderr,
+        )
+        sys.exit(1)
+
+    try:
+        df_recipes_raw = pd.read_csv(recipes_csv)
+    except Exception as e:
+        print(
+            f"ERROR: Failed to read recipe list CSV ({recipes_csv}):\n  {e}",
+            file=sys.stderr,
+        )
+        sys.exit(1)
+
     is_valid, err_msg, df_recipes = validate_recipes(df_recipes_raw)
     if not is_valid:
         print(f"\nERROR in recipe list:\n{err_msg}\n", file=sys.stderr)

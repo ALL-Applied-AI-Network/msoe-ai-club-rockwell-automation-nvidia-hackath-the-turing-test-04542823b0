@@ -713,3 +713,66 @@ How to connect to the rented Brev GPU instance (`fluid-isaac`, RTX PRO 6000) run
    - **Remove any GitHub login before stopping.**
    - Click **Stop** (do **NOT** click Delete) in the Brev console when done.
 
+---
+
+## 6. CSI Session Day Operations (New-Recording Mode)
+
+This section details how to process a new recording on site at CSI Station 3 (or from an offline run provided by CSI) without manual labeling.
+
+### A. Folder Setup & File Placement
+
+1. Choose a run name (e.g. `csi_oct30` or `video5_practice`).
+2. Place the recorded `vial_fill` camera video and recipe sequence into `data/runs/<name>/`:
+   - **Video:** `data/runs/<name>/video.mp4` (the recording from the `vial_fill` station camera).
+   - **Recipe List:** `data/runs/<name>/recipes.csv` (fill order, target recipe, and tank volumes).
+   *Template:* Copy and fill `annotations/run_recipes_template.csv`:
+   ```csv
+   vial,recipe_id,t200_ml,t400_ml,t100_ml,is_reference
+   1,5,10.0,10.0,10.0,
+   ```
+   *(Note: Leave `is_reference` empty to auto-assign the last vial of each contiguous recipe block as the reference).*
+3. *(Optional Paper Answer Key)* If a teammate scored vials by eye during dispensing, save their verdicts before launching the dashboard:
+   - **File:** `outputs/runs/<name>/judge_verdicts.csv`
+   - **Format:** `vial,verdict` (where `verdict` is `matches`, `unsure`, or `off`).
+
+---
+
+### B. The One Command to Build the Run
+
+Run `scripts/new_run.py` to turn the raw recording and recipe list into a verified run table:
+
+```powershell
+python scripts/new_run.py --video data/runs/<name>/video.mp4 --recipes data/runs/<name>/recipes.csv --name <name>
+```
+*(In `.venv`: `.\.venv\Scripts\python.exe scripts/new_run.py --video data/runs/<name>/video.mp4 --recipes data/runs/<name>/recipes.csv --name <name>`)*
+
+**What this command performs automatically:**
+1. **Recipe Validation:** Validates physical station limits (≤80 mL total, ≤50 mL from T-200, no T-300, ≥2 vials per recipe) and catches column typos.
+2. **Autonomous Fill Detection:** Locates every filled vial parked under the dispensing nozzle using starwheel motion gating and liquid fill color change in the LOW patch (`detect_parked_vials.py`).
+3. **Count Verification:** Confirms detected vial count matches recipe count. If mismatched, lists rejected parked intervals and outputs `outputs/runs/<name>/contact_sheet.png`.
+4. **Camera Alignment Check:** Runs glass-edge detection across all vials to ensure the camera was not bumped or moved.
+5. **Reference Assignment:** Designates clean 3rd vials (or the last vial of each recipe) as reference baselines.
+6. **Outputs Run Table:** Saves `outputs/runs/<name>/vials.csv`.
+
+---
+
+### C. Launch the Dashboard in Recorded Run Mode
+
+Start the operator dashboard:
+
+```powershell
+streamlit run app/dashboard.py
+```
+
+1. In the left sidebar, change **Source** from `Video 5 (demo)` to **`Recorded run`**.
+2. Select your run folder (`<name>`) from the **Select Run Folder** dropdown.
+
+**Dashboard Features in Recorded Run Mode:**
+- **Honesty Banner:** Confirms recorded run mode and names the clean reference vials taken from the recording itself.
+- **Pre-Fill Recipe Queue:** Computes risk lights ($\Delta E$ gap) dynamically using the run's own clean references (`scripts/flush_advisor.py --run`).
+- **Blank-Normalized Inspection:** Evaluates vials using neighbor-blank normalized transmittance ($T = \text{patch} / \text{blank}$) to stay robust against room lighting variations.
+- **Lighting Warning:** Panel 2 alerts operator with a yellow warning if background lighting shifted by $\Delta E > 3.0$ relative to that recipe's reference vial.
+- **Live Trial Log:** Every inspected vial is automatically appended to `outputs/runs/<name>/trial_log.csv`.
+- **End-of-Run Comparison:** When the last vial is reached, displays an evaluation table comparing system verdicts against `outputs/runs/<name>/judge_verdicts.csv` (if provided).
+
+
