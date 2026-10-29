@@ -171,7 +171,7 @@ def load_vial_metadata(
                 float(r.get("prev_t100_ml", 0) or 0),
             )
             change_key = f"{prev_rec}->{rec_id}"
-            advisor_light = ADVISOR_LIGHTS.get(change_key, "RED")
+            advisor_light = ADVISOR_LIGHTS.get(change_key, "UNKNOWN")
         else:
             prev_desc = "None (first vial of run)"
             change_key = "unknown"
