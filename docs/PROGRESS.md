@@ -2,7 +2,7 @@
 
 This is our team's lab notebook: what we did, what we found, and **why we did it that way**. It is written for teammates with no coding background and for judges who ask "why?". Add a section every time a task card is finished (newest work at the bottom of "What we did").
 
-*Last updated: Oct 26, 2026 (Cards 1–4, 3b, 10, 6, 7, and 8 done).*
+*Last updated: Oct 29, 2026 (Cards 1–4, 3b, 10, 6, 7, 8, and New-recording mode done).*
 
 ---
 
@@ -297,6 +297,15 @@ where $\Delta E_{\text{recipe gap}}$ is the $\Delta E2000$ between the two recip
 - Pictures go **before** the question in each request, and we use NVIDIA's recommended settings, because that is how the model was trained to read requests.
 - We tested the script against a stand-in server to confirm it sends exactly the format NVIDIA documents. It still needs one real run against Cosmos.
 
+### New-recording mode for the CSI session (Oct 29)
+
+- **What it does and why:** The judges ask to see the solution operating on CSI hardware (`docs/submission-and-judging.md`). All our previous work relied on `annotations/video5_vial_times_corrected.csv`, where the last parked frame of each of the 30 vials was found by hand. A fresh recording from CSI Station 3 has no hand-made labels, new recipe sequences, and different lighting. New-recording mode processes any new `vial_fill` recording and recipe list on site the same day: it finds every filled vial parked under the nozzle without labels, establishes clean reference vials from the recording itself, checks each vial with blank-normalized colors, warns when the brightness has changed since the recipe's reference vial, and logs every inspection.
+- **Fill test without labels:** The starwheel indexes between fills, so frame-to-frame motion outside the center stream is near zero when a vial is parked and large during indexing. For every candidate parked interval, we measure the CIELAB $\Delta E_{2000}$ in the LOW patch between the first and last parked frame (`scripts/detect_parked_vials.py`). Liquid dispensing creates a substantial color and absorption shift. We set the fill cut point at **4.6**, placed midway between the largest empty-pocket change (**2.63**, in video 5 interval 7) and the palest fill seen (**6.54**, pale amber in video 3 frame 2695). No clear-only fill has been seen yet, so the margin for clear liquid is unknown; the `--min-fill-de` flag allows adjusting this cut on site without editing code.
+- **Video 5 practice result:** Tested as an unlabelled run (`scripts/new_run.py`), the detector found all **30 of 30** vials with no extras, each within 5 frames of the hand-found frame, and every verdict was identical to the verdict at the hand-found frame. The glass-edge alignment check verified all patches remained clear of the vial walls. The 10 clean reference baselines (vials 3, 6, 9, 12, 15, 18, 21, 24, 27, 30) were auto-designated and saved to `outputs/runs/video5_practice/vials.csv`.
+- **Blank normalization and lighting warning:** Each vial's patch is normalized by its adjacent starwheel neighbour blank ($T = \text{patch} / \text{blank}$) so an even change in brightness cancels out. If the vial's raw blank differs from its reference vial's raw blank by $\Delta E_{2000} > 3.0$, a lighting warning fires in the dashboard to prompt re-taking references. On video 5 there were **0 warnings**, with the largest natural blank change reaching **2.75** (vial 29) against the **3.0** cut. In the darkening test (frames of vials 19 and 20 artificially dimmed by 25% linear), lighting warnings fired on exactly vials 19 and 20, while their blank-normalized verdicts remained unchanged (whereas raw vial 20 shifted from PASS to UNSURE).
+- **One command and rehearsed failures:** A single command builds the run: `python scripts/new_run.py --video data/runs/<name>/video.mp4 --recipes data/runs/<name>/recipes.csv --name <name>`. Four failure scenarios were rehearsed to ensure no raw Python tracebacks: wrong video path (clean missing file notice), missing recipe row (clean count mismatch listing rejected intervals and `--min-fill-de`), column typos like `recipe_num` or `t200ml` (clean unrecognized column error), and camera shifted +20 px right (glass-edge check flags patch touching vial wall).
+- **Limits:** light from one side fooled both checks in the Card 7 twin test; normalization cancels only even brightness changes. The lighting-warning margin is thin (largest natural change 2.75 against the 3.0 cut), so an occasional false warning is possible; the warning never changes a verdict. References come from the same recording: each recipe needs at least 2 vials, preferably 3, because with only 2 the reference is the 2nd vial, which can still carry leftover tint (vials 5 and 29 in video 5 did). The fill test was tuned on video 5 and checked by eye on videos 1–4; no clear-only fill has been seen.
+
 ---
 
 ## Decisions and the science behind them
@@ -318,10 +327,9 @@ where $\Delta E_{\text{recipe gap}}$ is the $\Delta E2000$ between the two recip
 ## What's next
 
 1. **Card 9 (explanations):** explain flagged vials with Cosmos (version C: flagged vial crop + reference image + recipe info + measured $\Delta E$ and flush prediction), with explanations scored.
-2. **Dashboard lighting follow-up:** switch dashboard to blank-normalized colors for the live test, add a "lighting changed: re-take reference vials" warning, and take fresh reference vials under room lighting on demo day.
-3. **Card 10, step 10:** plug real Brev explanations into `outputs/explanations_cache.json`.
-4. **Teammate cold-start test:** teammate runs dashboard cold start from `RUNBOOK.md`.
-5. **Live test and final submission:** live test at CSI Station 3, video recording, 1-page summary.
+2. **Card 10, step 10:** plug real Brev explanations into `outputs/explanations_cache.json`.
+3. **Teammate cold-start test:** teammate runs video 5 practice run and dashboard from `RUNBOOK.md`.
+4. **Live test and final submission:** live test at CSI Station 3, video recording, 1-page summary.
 
 ## Words used here
 

@@ -159,6 +159,11 @@ All active project outputs are organized into per-card subdirectories under `out
 | `outputs/card8/` | `real_predictions.csv` | `scripts/test_vial_model.py` | 30-vial real evaluation table with features, predicted shares, distances, and flags |
 | `outputs/card8/` | `real_test.csv` | `scripts/test_vial_model.py` | Benchmark evaluation table comparing color check vs twin model across subsets and answer keys |
 | `outputs/card8/` | `real_clean_share_error.csv` | `scripts/test_vial_model.py` | 10 clean 3rd vials model predicted shares vs true shares and mean absolute error (sim-to-real gap) |
+| `annotations/` | `run_recipes_template.csv` | Template definition | Standard CSV recipe sequence template for recorded runs (`vial,recipe_id,t200_ml,t400_ml,t100_ml,is_reference`) |
+| `outputs/runs/<name>/` | `parked_vials.csv` | `scripts/detect_parked_vials.py` | Autonomous fill detection table with detected frame, mp4 timestamp, fill $\Delta E$, and LOW $L^*$ |
+| `outputs/runs/<name>/` | `contact_sheet.png` | `scripts/detect_parked_vials.py` | Visual verification grid of all detected parked vial frames with LOW and HIGH patches drawn |
+| `outputs/runs/<name>/` | `vials.csv` | `scripts/new_run.py` | Verified run table with recipes, volumes, last parked frames, mp4 timestamps, and reference assignments |
+| `outputs/runs/<name>/` | `trial_log.csv` | `app/dashboard.py` | Live operator trial log recording timestamps, recipes, risk lights, verdicts, $\Delta E$, patch, and timings |
 
 ---
 
