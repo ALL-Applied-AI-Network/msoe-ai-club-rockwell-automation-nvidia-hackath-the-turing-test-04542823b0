@@ -766,6 +766,10 @@ This section details how to process a new recording on site at CSI Station 3 (or
 3. *(Optional Paper Answer Key)* If a teammate scored vials by eye during dispensing, save their verdicts before launching the dashboard:
    - **File:** `outputs/runs/<name>/judge_verdicts.csv`
    - **Format:** `vial,verdict` (where `verdict` is `matches`, `unsure`, or `off`).
+4. **Before building the run, check three things:**
+   - The video is 640 × 480, like the dataset (the measurement patches are fixed pixel positions): `python -c "import cv2; c=cv2.VideoCapture('data/runs/<name>/video.mp4'); print(c.get(3), c.get(4))"` must print `640.0 480.0`. Anything else: stop and ask for help; the patches won't line up.
+   - The recipe list has **one row for every vial filled in the recording**, including any fills before or after the planned sequence. Ask CSI to start the recording just before the first vial and stop it after the last; otherwise note the extra fills and their recipes.
+   - The judge's verdicts use exactly the words `matches`, `unsure` or `off` (lower case).
 
 ---
 
@@ -790,10 +794,10 @@ python scripts/new_run.py --video data/runs/<name>/video.mp4 --recipes data/runs
 
 ### C. Launch the Dashboard in Recorded Run Mode
 
-Start the operator dashboard:
+Start the operator dashboard (use `python -m streamlit`, not plain `streamlit`: the plain command fails with "The system cannot find the file specified" if the `.venv` was created in a different folder):
 
 ```powershell
-streamlit run app/dashboard.py
+python -m streamlit run app/dashboard.py
 ```
 
 1. In the left sidebar, change **Source** from `Video 5 (demo)` to **`Recorded run`**.
