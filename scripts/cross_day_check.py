@@ -620,7 +620,7 @@ def run_csi_cross_day(video_dir: Path = DEFAULT_CSI_VIDEO_DIR, out_csv: Path = O
     print(f"   Spearman rho = {rho_gap:.4f} (p = {p_gap:.4f})")
     print("   -> The advisor's pre-fill recipe gaps ranked the measured color shifts with high rank")
     print(f"      correlation (rho = {rho_gap:.2f}); 9->8 (AMBER, gap 6.4) had the smallest shift (dE {norm_des[-1]:.2f}),")
-    print(f"      and 5->13 (GREEN, gap 2.4) ranked 3rd smallest (dE {norm_des[0]:.2f}, on LOW patch due to small 30 mL vial).")
+    print(f"      and 5->13 (GREEN, gap 2.4) ranked 3rd smallest (dE {norm_des[0]:.2f}; the advisor's gap used the LOW patch because Recipe 5 is a small vial).")
     print("\n2. Judge Verdict (off=2, unsure=1, matches=0) vs Measured Norm dE:")
     print(f"   Spearman rho = {rho_judge:.4f} (p = {p_judge:.4f})")
     print("   -> The judge's 4 'off' vials were the 4 highest measured dE values.")
