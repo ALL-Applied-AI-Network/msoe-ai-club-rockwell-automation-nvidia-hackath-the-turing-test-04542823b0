@@ -132,6 +132,25 @@ def get_batch_previous_recipe_for_vial(df_v: pd.DataFrame, vial_num: int) -> int
     return int(diff_before.iloc[-1]["recipe_id"])
 
 
+def get_batch_block(df_v: pd.DataFrame, vial_num: int) -> tuple[int, int]:
+    """Position of this vial in its run of same-recipe vials, and that run's length (a recipe can repeat later)."""
+    vials = df_v.index.tolist()
+    i = vials.index(vial_num)
+    rec = df_v.loc[vial_num, "recipe_id"]
+    start = i
+    while start > 0 and df_v.loc[vials[start - 1], "recipe_id"] == rec:
+        start -= 1
+    end = i
+    while end < len(vials) - 1 and df_v.loc[vials[end + 1], "recipe_id"] == rec:
+        end += 1
+    return i - start + 1, end - start + 1
+
+
+def _set_vial(n: int):
+    """Button callback: runs before the next rerun, so the slider shows the new vial."""
+    st.session_state.vial_index = n
+
+
 def get_active_change_for_vial(vial_num: int, df_v: pd.DataFrame) -> tuple[int, int]:
     """
     Determines which recipe transition Panel 1 should highlight based on current vial.
@@ -256,6 +275,7 @@ def get_all_30_verdicts():
             "recipe_id": item.recipe_id,
             "total_ml": item.total_ml,
             "batch_pos": bpos,
+            "batch_total": 3,
             "verdict": verdict,
             "delta_e": res["delta_e"],
             "patch": res["patch"],
@@ -284,8 +304,7 @@ def get_all_run_verdicts(run_name: str, vials_csv_str: str, video_mp4_str: str):
         item = get_vial(v, times_csv=v_csv, video_mp4=v_mp4, with_frame=True)
         is_ref = bool(df_v.loc[v, "is_reference"])
         cur_r = int(df_v.loc[v, "recipe_id"])
-        batch_vials = df_v[df_v["recipe_id"] == cur_r].index.tolist()
-        bpos = batch_vials.index(v) + 1 if v in batch_vials else 1
+        bpos, btotal = get_batch_block(df_v, v)
 
         t_math0 = time.perf_counter()
         res = check_vial_normalized(
@@ -300,6 +319,7 @@ def get_all_run_verdicts(run_name: str, vials_csv_str: str, video_mp4_str: str):
             "recipe_id": item.recipe_id,
             "total_ml": item.total_ml,
             "batch_pos": bpos,
+            "batch_total": btotal,
             "verdict": verdict,
             "delta_e": res["delta_e"],
             "patch": res["patch"],
@@ -413,7 +433,10 @@ if prereqs_ok:
         vial_refs = None
 
     # Determine current vial
-    current_vial = min(st.session_state.vial_index, max_vials)
+    if "pending_vial" in st.session_state:
+        st.session_state.vial_index = st.session_state.pop("pending_vial")
+    st.session_state.vial_index = max(1, min(int(st.session_state.vial_index), max_vials))
+    current_vial = st.session_state.vial_index
     current_item = get_vial(current_vial, times_csv=times_csv, video_mp4=video_mp4, with_frame=True)
     upcoming_change = get_active_change_for_vial(current_vial, df_times)
 
@@ -440,7 +463,7 @@ if prereqs_ok:
             border = "2px solid #00c0f0" if is_upcoming_target else "1px solid #555"
             pills_html.append(
                 f'<span style="border: {border}; background: {bg}; border-radius: 4px; '
-                f'padding: 3px 8px; font-weight: bold; font-size: 0.9em;">R{r}</span>'
+                f'padding: 3px 8px; font-weight: bold; font-size: 0.9em; color: #f0f2f6;">R{r}</span>'
             )
             if i < len(QUEUE_RECIPES) - 1:
                 r_next = QUEUE_RECIPES[i + 1]
@@ -580,34 +603,29 @@ if prereqs_ok:
         # Controls: Next vial, Reset, Auto-play
         ctrl_c1, ctrl_c2, ctrl_c3 = st.columns([1, 1, 1.2])
         with ctrl_c1:
-            if st.button("▶ Next Vial", use_container_width=True, disabled=(current_vial >= max_vials)):
-                st.session_state.vial_index += 1
-                st.rerun()
+            st.button(
+                "▶ Next Vial",
+                use_container_width=True,
+                disabled=(current_vial >= max_vials),
+                on_click=_set_vial,
+                args=(min(current_vial + 1, max_vials),),
+            )
         with ctrl_c2:
-            if st.button("⏮ Reset (V1)", use_container_width=True):
-                st.session_state.vial_index = 1
-                st.rerun()
+            st.button("⏮ Reset (V1)", use_container_width=True, on_click=_set_vial, args=(1,))
         with ctrl_c3:
             auto_play = st.toggle("Auto-play (3s)", value=False, key="auto_play_toggle")
 
-        # Quick slider to jump to any vial
-        slider_val = st.slider(
+        # Quick slider to jump to any vial (shares its state with the buttons, so they never undo each other)
+        st.slider(
             "Jump to vial",
             min_value=1,
             max_value=max_vials,
-            value=current_vial,
-            key="vial_slider",
+            key="vial_index",
             label_visibility="collapsed",
         )
-        if slider_val != current_vial:
-            st.session_state.vial_index = slider_val
-            st.rerun()
 
         # Batch position and reference determination
-        cur_r = int(df_times.loc[current_vial, "recipe_id"])
-        batch_vials = df_times[df_times["recipe_id"] == cur_r].index.tolist()
-        batch_total = len(batch_vials)
-        batch_pos = batch_vials.index(current_vial) + 1 if current_vial in batch_vials else (((current_vial - 1) % 3) + 1)
+        batch_pos, batch_total = get_batch_block(df_times, current_vial)
         is_reference = (
             bool(df_times.loc[current_vial, "is_reference"])
             if "is_reference" in df_times.columns
@@ -856,11 +874,14 @@ if prereqs_ok:
 
     cnt_col1, cnt_col2, cnt_col3, cnt_col4, cnt_col5 = st.columns(5)
 
-    n_changes_total = len(QUEUE_RECIPES) - 1
+    recipe_seq = df_times["recipe_id"].tolist()
+    n_changes_total = sum(1 for a, b in zip(recipe_seq, recipe_seq[1:]) if a != b)
+    seq_so_far = df_times.loc[:current_vial, "recipe_id"].tolist()
+    n_changes_so_far = sum(1 for a, b in zip(seq_so_far, seq_so_far[1:]) if a != b)
     with cnt_col1:
         st.metric(
             "Step 1 · Pre-Fill",
-            f"{min(current_vial, n_changes_total)} / {n_changes_total} Changes",
+            f"{n_changes_so_far} / {n_changes_total} Changes",
             "100% queue advisory",
         )
     with cnt_col2:
@@ -933,7 +954,7 @@ if prereqs_ok:
                 if verd in ("fail", "unsure"):
                     j_col = "judge_1" if "judge_1" in judge_df.columns else "verdict"
                     j_val = judge_df.loc[v_num, j_col] if v_num in judge_df.index else "N/A"
-                    bpos_str = f"{r['batch_pos']} of 3"
+                    bpos_str = f"{r['batch_pos']} of {r.get('batch_total', 3)}"
                     verdict_badge = "🔴 FAIL" if verd == "fail" else "🟡 UNSURE"
                     summary_rows.append({
                         "Vial": f"Vial {v_num:02d}",
@@ -964,7 +985,7 @@ if prereqs_ok:
     # -----------------------------------------------------------------------
     # Auto-play Handler (advances one vial every 3 seconds)
     # -----------------------------------------------------------------------
-    if auto_play and st.session_state.vial_index < max_vials:
+    if auto_play and current_vial < max_vials:
         time.sleep(3)
-        st.session_state.vial_index += 1
+        st.session_state.pending_vial = current_vial + 1  # applied at the top of the next run, before the slider exists
         st.rerun()
