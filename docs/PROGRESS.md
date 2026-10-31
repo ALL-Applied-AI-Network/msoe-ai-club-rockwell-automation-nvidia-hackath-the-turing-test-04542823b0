@@ -2,7 +2,7 @@
 
 This is our team's lab notebook: what we did, what we found, and **why we did it that way**. It is written for teammates with no coding background and for judges who ask "why?". Add a section every time a task card is finished (newest work at the bottom of "What we did").
 
-*Last updated: Oct 29, 2026 (Cards 1–4, 3b, 10, 6, 7, 8, and New-recording mode done).*
+*Last updated: Oct 30, 2026 (Cards 1–4, 3b, 10, 6, 7, 8, New-recording mode, Card 9, and CSI session done).*
 
 ---
 
@@ -324,6 +324,18 @@ where $\Delta E_{\text{recipe gap}}$ is the $\Delta E2000$ between the two recip
   > Operator action: `"flush the line thoroughly with the correct recipe components until the color matches the reference vial before dispensing the next batch"`
 - **Likely reasons (not tested):** many first vials are very dark in the crops, so there is little color for the model to go on and it seems to guess from the recipe text, as in Card 3b; and it read the dispense order we gave it as a possible cause ('incorrect colorant order').
 - **System decision (Reviewed explanation library):** The color check decides pass/fail, never Cosmos. To protect the operator from plausible hallucinations, Cosmos explanations reach the dashboard only after a person approves them once per recipe change (`annotations/card9_scores.csv`). Approved explanations (such as 6 → 7) are displayed in the dashboard; unapproved explanations are withheld (`"Explanation withheld: failed review (annotations/card9_scores.csv)"`), and recipe changes with no cached explanation show `"Explanation unavailable"`.
+
+### CSI session (Oct 30)
+
+- **What happened:** CSI's operator ran our order 5, 13, 7, 6, 14, 10, 12, 11, 9, 8 on Station 3, one vial per recipe, in 4 `vial_fill` recordings (640 × 480).
+- **Vial detection without labels:** The detector found 10 of 10 vials with no labels across the four recordings (`scripts/detect_parked_vials.py`).
+- **Advisor predictions before fill:** The advisor's predictions were photographed before the first fill: 7 RED, 1 AMBER at 9 → 8, and 1 GREEN at 5 → 13.
+- **Human judgment:** A teammate judged the 9 vials with a known previous recipe by eye against video 5's clean vials before any color check (4 off, 4 unsure, 1 matches; key committed as `annotations/csi_20261030_judge_verdicts.csv`; the judge had seen the predictions).
+- **Results:**
+  1. Against video 5's references with the fixed cut points, all 10 vials failed, including the vial the judge saw as matching (vial 6, dE 13.5); the lowest was 7.1, so references from another day don't transfer, even with blank normalization; the lighting warning fired on 4 of 10 vials; same-day references are required, which a one-vial-per-recipe run can't provide.
+  2. The judge's 4 off vials were the 4 highest dE (rho 0.73 between judge and dE).
+  3. The advisor's pre-run recipe gaps ranked the measured shifts with Spearman rho 0.95 over 9 new recipe changes; 9 → 8 (AMBER) had the smallest shift; 5 → 13 (GREEN) ranked 3rd smallest; the advisor's gap for this change was computed on the weaker LOW patch because Recipe 5 is a small vial (the vial itself was measured on HIGH).
+- **Limits:** One session, one vial per change, one judge who had seen the predictions, recording 1's vials 2 and 3 possibly blurred, vial 1's previous recipe unknown.
 
 ---
 
