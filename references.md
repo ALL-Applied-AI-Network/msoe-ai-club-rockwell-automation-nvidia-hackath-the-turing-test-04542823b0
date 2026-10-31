@@ -11,9 +11,9 @@ This project was built for the Rockwell Automation × NVIDIA Innovation Lab Hack
 
 ---
 
-## 2. Physical Facility and Live Hardware
+## 2. Physical Facility
 
-- **UWM Connected Systems Institute (CSI):** Special thanks to the CSI staff and facility operators for hosting and executing our live test session on Fluid Mixing Station 3 on October 30, 2026. CSI operated our 10-recipe test sequence (Recipes 5, 13, 7, 6, 14, 10, 12, 11, 9, 8) across 4 high-resolution recordings without recipe labels to test our autonomous detection and cross-day color models.
+- **UWM Connected Systems Institute (CSI):** Special thanks to the CSI staff and facility operators for hosting and running our recorded test session on Fluid Mixing Station 3 on October 30, 2026. CSI operated our 10-recipe test sequence (Recipes 5, 13, 7, 6, 14, 10, 12, 11, 9, 8) in 4 vial_fill recordings (640 × 480), which we processed afterwards to test unlabeled vial detection and a cross-day color check.
 
 ---
 
@@ -52,7 +52,7 @@ All dependencies are defined in `requirements.txt` and executed in Python 3.12:
 - **`colour-science`:** High-precision sRGB-to-linear conversions, CIELAB D65 transforms, and exact CIEDE2000 color difference math.
 - **`python-dotenv`:** Loading local environment configurations and secure API keys from `.env` without committing secrets.
 - **`openai`:** Official Python client library used to query the OpenAI-compatible REST API served by the local Cosmos 3 NIM container.
-- **`streamlit`:** Serving the real-time, interactive 3-panel operator dashboard (`app/dashboard.py`).
+- **`streamlit`:** The interactive 3-panel operator dashboard (replay of recordings) (`app/dashboard.py`).
 
 ---
 

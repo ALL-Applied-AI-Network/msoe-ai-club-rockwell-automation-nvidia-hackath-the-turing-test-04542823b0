@@ -13,7 +13,7 @@ Carryover Copilot warns operators before a risky recipe change on Fluid Mixing S
 
 ---
 
-**Our project:** warn the operator before a risky recipe change, check every filled vial's color against its own recipe, and explain in plain words why a vial is off (e.g. "leftover orange from Recipe 6 turned this blue fill green"). Training data comes from the Isaac Sim digital twin; real camera images are used only for testing; NVIDIA Cosmos Reason writes the explanations.
+**Our project:** warn the operator before a risky recipe change, check every filled vial's color against its own recipe, and explain in plain words why a vial is off (e.g. "leftover orange from Recipe 6 turned this blue fill green"). Real camera images are used only for testing. The Isaac Sim digital twin was used to test lighting changes and to train a vial model, which did not beat plain color math, so color math makes every decision. NVIDIA Cosmos Reason drafts explanations, and a person approves each one before operators see it.
 
 | Start here | What it is |
 |---|---|
