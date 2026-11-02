@@ -58,7 +58,7 @@ All dependencies are defined in `requirements.txt` and executed in Python 3.12:
 
 ## 7. Team Contributions
 
-- **Ayden (Teammate):** Formulated and implemented optical blank normalization (dividing liquid patch absorbance by neighboring blank glass to cancel lighting drift), developed the anchored absorbance gradient (Beer–Lambert formulation without unphysical intercept), engineered the automated twin dye-strength calibration loop, and modeled the vertical liquid mixing state.
+- **Our team:** We designed optical blank normalization (dividing each liquid patch by the empty neighbouring vial to cancel lighting drift), the anchored absorbance gradient (Beer–Lambert formulation without an unphysical intercept), the automated twin dye-strength calibration loop, and the vertical liquid mixing state.
 
 ---
 

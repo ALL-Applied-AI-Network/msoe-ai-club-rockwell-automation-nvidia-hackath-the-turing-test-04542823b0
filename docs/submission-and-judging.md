@@ -58,6 +58,6 @@ Ask Gemini: *"Read docs/PROGRESS.md and the draft one-pager and video script. Li
 3. **The counts are honest:** say "8 of 8 on one judge's answer key, 16 tall vials", not "100% accuracy". Small vials are counts, not percentages.
 4. **The limits slide is in:** one recorded run (plus the CSI session, if it happened), one human judge, 30 vials, small vials barely tested, light from one side fools the check, Cosmos explains but doesn't decide, the twin-trained model didn't beat color math.
 5. **CSI is described exactly as it happened:** "we processed CSI's recording on site", not "live" unless it really was live.
-6. **Credit:** Ayden's ideas (blank normalization, anchored gradient, calibration loop, mixing state); the organizers' datasets and twin; NVIDIA Isaac Sim and Cosmos; the AI coding tools (Gemini, Claude Code).
+6. **Credit:** the organizers' datasets and twin; NVIDIA Isaac Sim and Cosmos; the AI coding tools (Gemini, Claude Code).
 7. **Nothing secret or heavy in the repo:** no `.env`, keys, videos, zips or images (`git ls-files | findstr /i ".env .mp4 .zip .png .jpg"` on Windows should show only small committed figures, if any).
 
