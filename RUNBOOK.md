@@ -662,6 +662,32 @@ streamlit run app/dashboard.py
 
 This opens a browser tab at `http://localhost:8501`.
 
+### Blind analysis of the shorter CSI recordings
+
+The dashboard can play and analyze the unlabeled CSI videos copied under
+`outputs/runs/<run name>/`. Runs 1–4 have already been processed with:
+
+```powershell
+python scripts/blind_analyze.py --video outputs/runs/csi_run_2/vial_fill.mp4 --name csi_run_2
+```
+
+The script uses starwheel motion and liquid change only to locate filled vials. It then
+analyzes exactly **one frame per vial**: the final stable frame immediately before the
+starwheel sends that vial onward. From that departure snapshot it measures observed color,
+groups similar colors, and reports the nearest known Video 5 recipe color as an **estimate**
+with higher/medium/low confidence. It does not analyze frames between fills and never calls
+the estimate a verified production recipe or a PASS/FAIL verdict.
+
+To view the results in the left sidebar:
+
+1. Set **Source** to **CSI video archive**.
+2. Choose `csi_run_1` through `csi_run_5` under **CSI recording**.
+3. Choose **Vial Fill**, **Tank Level**, or **Cap Seal** under **Camera view**.
+
+The Vial Fill view for runs 1–4 shows the departure-frame image, observed color, color group,
+recipe candidate, confidence, and the complete blind-results table. Tank Level and Cap Seal
+remain synchronized playback views.
+
 ---
 
 ### What the Page Shows
