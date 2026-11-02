@@ -1,28 +1,27 @@
 # Carryover Copilot: One-Page Summary
 
-## 1. What problem
-On Station 3, recipe changes tint the next vial (vial 7 green in a blue batch) through a shared nozzle. Teledyne checks 'known color', not 'this recipe's color', with no cause or warning. **Carryover Copilot** warns before a risky recipe change (a red/amber/green light per change, and a reorder when it removes a red one), checks every filled vial against its own recipe's clean reference with the existing vial_fill camera, and shows a reviewed explanation of the likely cause.
+## 1. What problem are we solving?
+On Fluid Mixing Station 3, every recipe flows through one shared pipe and nozzle, so leftovers from one recipe end up in the next vial. When an orange recipe was followed by a blue one, the first blue vial came out green. The station's Teledyne check only asks whether a color is familiar: it can't tell whether a vial matches *its own* recipe, why it's off, or warn beforehand.
 
-## 2. How we use Physical AI
-We measured where AI helps; decisions stay with color math:
-- **Isaac Sim twin:** Calibrated renders varied appearance. In lighting tests (±30%), blank normalization cut false alarms from 8 of 8 to 2 of 8. A twin-trained model did not beat color math (5 of 8 or 4 of 8 caught vs 8 of 8).
-- **Cosmos Reason:** In Card 3b it lost to color math (on 16 tall vials: 5 of 8 caught, 3 false alarms, vs 8 of 8 and 0). Repurposed for explanations, 1 of 8 was fully correct; a person approves each once per recipe change.
+**Carryover Copilot** does all three. It gives each recipe change a red, amber or green risk light before the fill, checks every vial against a clean reference of its own recipe with the existing camera, and shows a reviewed explanation for flagged vials.
 
-## 3. How we used the CSI equipment
-On Oct 30, CSI ran our 10-recipe order on Station 3 (4 recordings, 640×480). Predictions were photographed before fill; the detector found 10 of 10 vials without labels. Predicted risk ranked measured shifts with Spearman ρ = 0.95 over 9 changes. Pass/fail couldn't be scored: with no clean same-day vial, carryover and day-to-day differences can't be separated.
+## 2. How do we use Physical AI?
+Color math makes every pass/fail decision; AI is used where it measurably helps.
+- **Isaac Sim digital twin:** under ±30% lighting changes we couldn't create on the real line, comparing each vial with the empty vial beside it cut false alarms from 8 of 8 to 2 of 8. A twin-trained model caught 5 of 8 bad vials, against 8 of 8 for color math.
+- **Cosmos Reason:** as a detector, it caught 5 of 8 with 3 false alarms. As an explanation writer, 1 of 8 drafts was fully correct, so a person approves each one before operators see it.
 
-## 4. Evidence it works
-- **Inspection accuracy:** Video 5 tall vials: 8 of 8 caught, 0 false alarms (one judge, answer key locked first).
-- **Pre-fill risk ranking:** Spearman ρ = 0.79–0.82 on Video 5; ρ = 0.95 on 9 CSI changes.
-- **Engineering practicality:** The color check takes ~0.7 ms of math per vial (~75 ms including reading the frame) on a laptop, with the existing camera and no PLC changes.
+## 3. How did we use the CSI equipment?
+On October 30, CSI's operator ran a ten-recipe order we designed on Station 3. We photographed the advisor's prediction before the first fill. From the recordings alone, the system found all 10 filled vials, and its predicted risk ranked the measured color shifts with a Spearman correlation of 0.95 across 9 new recipe changes. Each recipe ran once, so there was no clean same-day vial and pass/fail could not be scored.
+
+## 4. What evidence shows it works?
+- **Inspection:** 8 of 8 discolored tall vials caught, 0 false alarms, against an answer key locked before scoring.
+- **Prediction:** risk ranking matched measured carryover (Spearman 0.79–0.82 on the supplied recording, 0.95 at CSI).
+- **Practicality:** about 0.7 ms of math per vial on a laptop, the existing camera, no PLC changes.
 
 ## Value beyond this station
-Any line that changes colored or flavored liquids through one shared path has the same problem (paints, inks, beverages, cosmetics, liquid pharma). Adoption needs a fixed camera, any PC and 3 fills per recipe for a reference; Cosmos runs once per recipe change, not per vial. Costs and the value formula: docs/business-case.md (no invented dollar figures).
+Paints, inks, beverages and liquid pharmaceuticals share this first-unit problem wherever products share one pipe. Setup needs a camera, an ordinary PC and three fills per recipe (costs: `docs/business-case.md`).
 
-## Where it falls short
-One run plus one CSI session, one judge, small vials (30–40 mL), light from one side, Cosmos needs review, live camera not built.
+## Where it falls short, and what's next
+One recording and one short CSI session, one human judge, few small vials; light from one side still fools the check, and Cosmos explanations need review. Next: live camera reading and a CSI session with three vials per recipe.
 
-## Next steps
-Same-day references at CSI, live camera reading, more recipe changes.
-
-**Links:** [`docs/PROGRESS.md`](PROGRESS.md) · [`docs/results.md`](results.md) · [`docs/business-case.md`](business-case.md) · [`RUNBOOK.md`](../RUNBOOK.md)
+**More detail:** [`docs/PROGRESS.md`](PROGRESS.md) · [`docs/results.md`](results.md) · [`docs/business-case.md`](business-case.md) · [`RUNBOOK.md`](../RUNBOOK.md)
