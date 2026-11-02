@@ -16,10 +16,10 @@ Card 3b showed the color check already works on tall vials (8 of 8 caught, 0 fal
 
 ## Ideas this plan builds on
 
-- **Blank normalization** (Ayden's idea, tested in `scripts/blank_check.py`): measure every liquid patch **relative to the empty vial in the next holder, at the same height**, like a lab blank. On video 5 it caught exactly the same vials as the raw check, and it cancels any even change in brightness. Both the twin and the real camera have that empty neighbour vial in view, so twin and real are compared in this blank-relative space. If the neighbour pocket is empty, use the median blank of the run (`blank_fallback`).
-- **The anchored gradient** (Ayden): absorbance relative to the blank grows in a straight line with each dye's amount, starting from zero at the empty vial. Calibrating the twin means matching each dye's strength, a handful of numbers.
-- **Automatic calibration loop** (Ayden's "reward and penalty" idea): render, measure the color error against the real vial, correct the dye strengths along the gradient, repeat a few times.
-- **Mixing state** (Ayden's "flow" idea): some real first vials look layered (darker at the bottom; `outputs/card4/first_vial_strips.png`). The renders include a controllable "mixing state", from evenly mixed to layered, so a model learns layered vials too.
+- **Blank normalization** (our idea, tested in `scripts/blank_check.py`): measure every liquid patch **relative to the empty vial in the next holder, at the same height**, like a lab blank. On video 5 it caught exactly the same vials as the raw check, and it cancels any even change in brightness. Both the twin and the real camera have that empty neighbour vial in view, so twin and real are compared in this blank-relative space. If the neighbour pocket is empty, use the median blank of the run (`blank_fallback`).
+- **The anchored gradient:** absorbance relative to the blank grows in a straight line with each dye's amount, starting from zero at the empty vial. Calibrating the twin means matching each dye's strength, a handful of numbers.
+- **Automatic calibration loop** (a "reward and penalty" idea): render, measure the color error against the real vial, correct the dye strengths along the gradient, repeat a few times.
+- **Mixing state** (a "flow" idea): some real first vials look layered (darker at the bottom; `outputs/card4/first_vial_strips.png`). The renders include a controllable "mixing state", from evenly mixed to layered, so a model learns layered vials too.
 
 ## Ground rules for every step
 
@@ -84,7 +84,7 @@ Card 3b showed the color check already works on tall vials (8 of 8 caught, 0 fal
 
 ## Step 8 · Write it down (laptop)
 
-> "(laptop) Card 7 step 8. Update docs/twin-map.md (what the stripes were, twin patch coordinates, the liquid replacement), RUNBOOK.md (the Card 7 commands and outputs/card7 in the Current outputs table), docs/PROGRESS.md (a 'Card 7' section: what we did, calibration ΔE including the held-out recipes, the lighting test result, GPU minutes per 1,000 images, and credit Ayden for blank normalization, the anchored gradient, the calibration loop and the mixing state), and GEMINI.md section 7. Show me the PROGRESS.md section before committing."
+> "(laptop) Card 7 step 8. Update docs/twin-map.md (what the stripes were, twin patch coordinates, the liquid replacement), RUNBOOK.md (the Card 7 commands and outputs/card7 in the Current outputs table), docs/PROGRESS.md (a 'Card 7' section: what we did, calibration ΔE including the held-out recipes, the lighting test result, GPU minutes per 1,000 images), and GEMINI.md section 7. Show me the PROGRESS.md section before committing."
 
 **Commit:** `Card 7: calibrated twin renders and lighting test`
 

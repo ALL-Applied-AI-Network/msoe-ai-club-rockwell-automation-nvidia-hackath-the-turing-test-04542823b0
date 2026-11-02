@@ -244,7 +244,7 @@ where $\Delta E_{\text{recipe gap}}$ is the $\Delta E2000$ between the two recip
   3. The real camera bends the image slightly (curved backdrop edge) while FillCam is a perfect pinhole; small near the vial.
   4. The real image is hazier and softer.
 
-### Blank normalization (Oct 22) · idea from Ayden
+### Blank normalization (Oct 22)
 - **What:** we measure each patch relative to the empty vial in the next holder at the same height, like a lab "blank" (BLANK_HIGH x 410–426, y 268–288; BLANK_LOW x 410–426, y 352–372; `scripts/blank_check.py`). 27 of 30 frames show that empty vial. Vials 6, 24 and 30 have an empty pocket next to them; they are all reference vials, so they use the median blank of the other 27 (marked blank_fallback). The blank is steady: BLANK_HIGH varies by σ ≈ 1.1 L, BLANK_LOW by 1.3 L in total.
 - **Same detection:** the Card 3 scoring with blank-normalized colors catches exactly the same vials as raw colors (HIGH 8 of 8 with 0 false alarms; LOW 7 of 10 with 1).
 - **Lighting:** making 5 frames 20% darker or brighter flipped 2 of 5 raw verdicts (vials 8 and 13, PASS → UNSURE) and no normalized verdicts. For an even brightness change this holds by design; uneven light and glare are tested in Card 7 with the twin.
@@ -253,7 +253,7 @@ where $\Delta E_{\text{recipe gap}}$ is the $\Delta E2000$ between the two recip
 
 ### Card 7 · Calibrated twin renders (Oct 26)
 
-- **Credit:** We credit Ayden for the foundational ideas behind this card: blank normalization using the adjacent starwheel vial, the anchored gradient absorption model, the automatic feedback calibration loop, and the vertical mixing stratification model.
+- **Ideas behind this card:** we built it on four ideas of our own: blank normalization using the adjacent starwheel vial, the anchored gradient absorption model, the automatic feedback calibration loop, and the vertical mixing stratification model.
 - **Stripes cause and liquid replacement:** The twin's original animated liquid used flat surface opacity rather than true physical volumetric absorption through the liquid. The horizontal stripes remained identical even with 4× more path-tracing samples (256 spp vs 64 spp), confirming they were not render noise; they came from machine bars behind the vial (rear safety grid and cross rail) seen through the transparent vial, the surface opacity material, and a liquid mesh slightly wider than the glass causing coplanar z-fighting. We replaced it at render time without modifying the organizers' USDA files (`scripts/set_liquid.py`): we hide the pre-recorded mesh and inject a clean volumetric cylinder (`OmniSurface` with true Beer–Lambert volume absorption, radius 13.133 mm, exactly 0.05 mm inside the inner glass wall).
 - **Measurement patch alignment:** Virtual camera `FillCam` aligns with the real physical camera so accurately that our measurement patches sit at the exact same pixel coordinates in the twin as on the real camera (HIGH: x in [302, 318], y in [268, 288]; LOW: x in [302, 318], y in [352, 372]; BLANK_HIGH and BLANK_LOW: x in [410, 426]).
 - **Fill height calibration:** Calibrated on the real 3rd vials (`scripts/calibrate_colors.py` -> `outputs/card7/twin_fill_height.json`). Liquid height in the twin matches the physical camera within 3.5 px across the full 30–80 mL range.
