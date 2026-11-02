@@ -1,5 +1,7 @@
 # Business case: what it costs to deploy Carryover Copilot, and whether a factory needs Cosmos
 
+Graphs and tables for this page: [`docs/business-case-graphs.pdf`](business-case-graphs.pdf).
+
 Written Oct 30 for the one-page summary and the video. **Rule we follow (GEMINI.md, rule 5): we never invent business numbers.** So this page separates three kinds of number:
 
 - **Measured:** from our own results (`docs/PROGRESS.md`, `docs/results.md`).
