@@ -10,10 +10,11 @@ Below: Inference Cascade Counter + End-of-Run Summary.
 
 Sidebar Source Options:
 - 'Video 5 (demo)': Replay of Video 5 using baseline reference colors and raw color checks.
+- 'CSI run carryover': Follow the actual Vial 1 -> Vial 2 -> Vial 3 sequence in a
+  CSI recording and estimate carryover risk at every handoff.
 - 'Recorded run': Replay of on-site CSI recordings using run-specific reference vials,
   blank-normalized color math, and lighting change warnings.
-- 'CSI video archive': Playback of the shorter, unlabeled CSI recordings and all three
-  camera views. This mode deliberately shows no recipe verdicts or risk scores.
+- 'CSI video archive': Playback of CSI recordings and all three camera views.
 
 Run with:
     streamlit run app/dashboard.py
@@ -83,19 +84,29 @@ elif "vial" in st.query_params and "param_vial_handled" not in st.session_state:
 # ---------------------------------------------------------------------------
 st.sidebar.title("Configuration")
 source_param = st.query_params.get("source")
-if source_param in ("run", "recorded", "Recorded run"):
-    default_src_idx = 1
-elif source_param in ("videos", "archive", "CSI video archive"):
-    default_src_idx = 2
-else:
-    default_src_idx = 0
+source_options = [
+    "Video 5 (demo)",
+    "CSI run carryover",
+    "Recorded run",
+    "CSI video archive",
+]
+source_aliases = {
+    "carryover": "CSI run carryover",
+    "sequence": "CSI run carryover",
+    "run": "Recorded run",
+    "recorded": "Recorded run",
+    "videos": "CSI video archive",
+    "archive": "CSI video archive",
+}
+default_source = source_aliases.get(source_param, source_param)
+default_src_idx = source_options.index(default_source) if default_source in source_options else 0
 source_mode = st.sidebar.radio(
     "Source",
-    ["Video 5 (demo)", "Recorded run", "CSI video archive"],
+    source_options,
     index=default_src_idx,
     help=(
-        "Use the analyzed demo, a processed recorded run, or playback-only CSI footage "
-        "that does not have enough recipe information for color verdicts."
+        "Use the analyzed demo, follow sequential carryover in an actual CSI run, replay a "
+        "processed run, or watch archived CSI footage."
     ),
 )
 
@@ -104,8 +115,42 @@ run_vials_csv = None
 run_video_mp4 = None
 archive_run = None
 archive_video_mp4 = None
+carryover_run = None
+carryover_csv = None
+carryover_video_mp4 = None
 
-if source_mode == "Recorded run":
+if source_mode == "CSI run carryover":
+    runs_dir = REPO_ROOT / "outputs" / "runs"
+    carryover_runs = (
+        sorted(
+            d.name
+            for d in runs_dir.iterdir()
+            if d.is_dir()
+            and (d / "carryover_transitions.csv").exists()
+        )
+        if runs_dir.exists()
+        else []
+    )
+    if not carryover_runs:
+        st.sidebar.error(
+            "No CSI carryover analyses found. Run scripts/analyze_run_carryover.py first."
+        )
+        st.stop()
+    requested_run = st.query_params.get("run")
+    default_carryover_idx = (
+        carryover_runs.index(requested_run) if requested_run in carryover_runs else 0
+    )
+    carryover_run = st.sidebar.selectbox(
+        "CSI run", carryover_runs, index=default_carryover_idx
+    )
+    carryover_dir = runs_dir / carryover_run
+    carryover_csv = carryover_dir / "carryover_transitions.csv"
+    carryover_video_candidate = carryover_dir / "vial_fill.mp4"
+    carryover_video_mp4 = (
+        carryover_video_candidate if carryover_video_candidate.exists() else None
+    )
+
+elif source_mode == "Recorded run":
     runs_dir = REPO_ROOT / "outputs" / "runs"
     available_runs = (
         sorted([d.name for d in runs_dir.iterdir() if d.is_dir() and (d / "vials.csv").exists()])
@@ -160,7 +205,7 @@ elif source_mode == "CSI video archive":
     archive_video_mp4 = next(path for path in archive_files if path.name == selected_archive_name)
 
 # Reset vial index if switching configuration
-curr_config = (source_mode, selected_run, archive_run)
+curr_config = (source_mode, selected_run, archive_run, carryover_run)
 if "prev_config" not in st.session_state:
     st.session_state.prev_config = curr_config
 elif st.session_state.prev_config != curr_config:
@@ -427,13 +472,139 @@ def log_trial_vial_if_needed(
 st.title("🧪 Carryover Copilot · Fluid Mixing Station 3")
 st.caption("Predictive Flush Advisory · In-Line Camera Color Verification · Cosmos Physical AI Explanations")
 
-if source_mode == "CSI video archive":
+if source_mode == "CSI run carryover":
+    st.subheader(f"Sequential carryover risk · {carryover_run}")
+    st.write(
+        "This follows the run in order: Vial 1 → Vial 2, Vial 2 → Vial 3, and so on. "
+        "Each prediction uses the intended recipes for those two actual vials."
+    )
     st.info(
-        f"**Blind CSI departure analysis · {archive_run}:** each vial is measured once, "
-        "using only its final stable frame immediately before the starwheel sends it onward. "
-        "Recipe candidates are color estimates with an explicit confidence level."
+        "The result is a fitted color-impact risk band, not a calibrated probability and not "
+        "proof that contamination occurred. CSI dataset runs 1–4 are not scored because their "
+        "intended per-vial recipe sequences were not supplied."
     )
 
+    carryover_df = pd.read_csv(carryover_csv)
+    required_carryover_columns = {
+        "source_vial",
+        "target_vial",
+        "source_recipe",
+        "target_recipe",
+        "predicted_carryover_delta_e",
+        "clean_recipe_gap_delta_e",
+        "risk_light",
+        "measurement_patch",
+        "action",
+    }
+    missing_columns = sorted(required_carryover_columns - set(carryover_df.columns))
+    if missing_columns:
+        st.error(
+            f"{carryover_csv} is missing required column(s): {', '.join(missing_columns)}"
+        )
+        st.stop()
+    if carryover_df.empty:
+        st.error("This run has no adjacent vial transitions to score.")
+        st.stop()
+
+    risk_counts = carryover_df["risk_light"].value_counts()
+    unique_vials = set(carryover_df["source_vial"]) | set(carryover_df["target_vial"])
+    summary_cols = st.columns(5)
+    summary_cols[0].metric("Vials in sequence", len(unique_vials))
+    summary_cols[1].metric("Vial-to-vial handoffs", len(carryover_df))
+    summary_cols[2].metric("RED · significant", int(risk_counts.get("RED", 0)))
+    summary_cols[3].metric("AMBER · borderline", int(risk_counts.get("AMBER", 0)))
+    summary_cols[4].metric("GREEN · low", int(risk_counts.get("GREEN", 0)))
+
+    selected_transition = st.slider(
+        "Inspect vial-to-vial handoff",
+        min_value=1,
+        max_value=len(carryover_df),
+        value=1,
+        key=f"carryover_transition_{carryover_run}",
+    )
+    transition_row = carryover_df.iloc[selected_transition - 1]
+    source_vial = int(transition_row["source_vial"])
+    target_vial = int(transition_row["target_vial"])
+    source_recipe = int(transition_row["source_recipe"])
+    target_recipe = int(transition_row["target_recipe"])
+    risk_light = str(transition_row["risk_light"])
+
+    st.markdown("---")
+    if risk_light == "RED":
+        st.error(
+            f"🔴 **HIGH RISK: Vial {source_vial} (Recipe {source_recipe}) is predicted "
+            f"to cause significant carryover into Vial {target_vial} (Recipe {target_recipe}).**"
+        )
+    elif risk_light == "AMBER":
+        st.warning(
+            f"🟡 **BORDERLINE: inspect Vial {target_vial} after the Vial {source_vial} → "
+            f"Vial {target_vial} handoff.**"
+        )
+    else:
+        st.success(
+            f"🟢 **LOW RISK: significant carryover is not predicted from Vial "
+            f"{source_vial} into Vial {target_vial}.**"
+        )
+
+    detail_cols = st.columns(5)
+    detail_cols[0].metric("Vial handoff", f"{source_vial} → {target_vial}")
+    detail_cols[1].metric("Recipe handoff", f"{source_recipe} → {target_recipe}")
+    detail_cols[2].metric(
+        "Predicted carryover shift",
+        f"ΔE {float(transition_row['predicted_carryover_delta_e']):.2f}",
+    )
+    detail_cols[3].metric(
+        "Clean-recipe gap",
+        f"ΔE {float(transition_row['clean_recipe_gap_delta_e']):.2f}",
+    )
+    detail_cols[4].metric("Measurement patch", str(transition_row["measurement_patch"]))
+    st.markdown(f"**Recommended action:** {transition_row['action']}")
+
+    display_df = carryover_df[
+        [
+            "source_vial",
+            "target_vial",
+            "source_recipe",
+            "target_recipe",
+            "predicted_carryover_delta_e",
+            "risk_light",
+            "measurement_patch",
+        ]
+    ].copy()
+    display_df.insert(
+        0,
+        "Vial handoff",
+        display_df["source_vial"].astype(str) + " → " + display_df["target_vial"].astype(str),
+    )
+    display_df.insert(
+        1,
+        "Recipe handoff",
+        display_df["source_recipe"].astype(str)
+        + " → "
+        + display_df["target_recipe"].astype(str),
+    )
+    display_df = display_df.drop(
+        columns=["source_vial", "target_vial", "source_recipe", "target_recipe"]
+    ).rename(
+        columns={
+            "predicted_carryover_delta_e": "Predicted ΔE",
+            "risk_light": "Risk",
+            "measurement_patch": "Patch",
+        }
+    )
+    st.subheader("Complete run sequence")
+    st.dataframe(display_df, width="stretch", hide_index=True)
+
+    if carryover_video_mp4 is not None:
+        with st.expander("Play this run's vial-fill video"):
+            st.video(str(carryover_video_mp4))
+    st.caption(
+        "Thresholds: GREEN < 2 ΔE; AMBER 2–5 ΔE; RED > 5 ΔE. "
+        "The first vial has no preceding vial inside the recording, so the table starts at 1 → 2."
+    )
+    st.stop()
+
+if source_mode == "CSI video archive":
     cap = cv2.VideoCapture(str(archive_video_mp4))
     fps = float(cap.get(cv2.CAP_PROP_FPS)) if cap.isOpened() else 0.0
     frame_count = int(cap.get(cv2.CAP_PROP_FRAME_COUNT)) if cap.isOpened() else 0
@@ -449,108 +620,8 @@ if source_mode == "CSI video archive":
     meta_cols[1].metric("Duration", f"{duration_s / 60:.1f} min")
     meta_cols[2].metric("Resolution", f"{width} × {height}" if width and height else "Unknown")
     meta_cols[3].metric("File size", f"{archive_video_mp4.stat().st_size / (1024 * 1024):.1f} MB")
-
     st.video(str(archive_video_mp4))
-
-    blind_csv = archive_video_mp4.parent / "blind_vials.csv"
-    if archive_video_mp4.name == "vial_fill.mp4" and blind_csv.exists():
-        blind_df = pd.read_csv(blind_csv)
-        group_count = int(blind_df["color_group"].nunique())
-        low_conf_count = int((blind_df["candidate_confidence"] == "low").sum())
-        higher_conf_count = int((blind_df["candidate_confidence"] == "higher").sum())
-
-        st.markdown("---")
-        st.subheader("Blind fill and color analysis")
-        summary_cols = st.columns(4)
-        summary_cols[0].metric("Departure snapshots", len(blind_df))
-        summary_cols[1].metric("Color groups", group_count)
-        summary_cols[2].metric("Higher-confidence candidates", higher_conf_count)
-        summary_cols[3].metric("Low-confidence candidates", low_conf_count)
-
-        selected_blind_vial = st.slider(
-            "Inspect detected vial",
-            min_value=1,
-            max_value=len(blind_df),
-            value=1,
-            key=f"blind_vial_{archive_run}",
-        )
-        blind_row = blind_df.iloc[selected_blind_vial - 1]
-
-        frame_cap = cv2.VideoCapture(str(archive_video_mp4))
-        frame_cap.set(cv2.CAP_PROP_POS_FRAMES, int(blind_row["frame"]))
-        frame_ok, blind_frame = frame_cap.read()
-        frame_cap.release()
-
-        frame_col, result_col = st.columns([1.2, 1.0], gap="large")
-        with frame_col:
-            if frame_ok:
-                annotated = blind_frame.copy()
-                cv2.rectangle(
-                    annotated,
-                    (LOW_PATCH["x_min"], LOW_PATCH["y_min"]),
-                    (LOW_PATCH["x_max"], LOW_PATCH["y_max"]),
-                    (0, 255, 255),
-                    2,
-                )
-                st.image(
-                    cv2.cvtColor(annotated, cv2.COLOR_BGR2RGB),
-                    caption=(
-                        f"Detected vial {int(blind_row['vial'])} at "
-                        f"{float(blind_row['mp4_s']):.1f}s · yellow box is the measured patch"
-                    ),
-                    width="stretch",
-                )
-            else:
-                st.error(f"Could not read frame {int(blind_row['frame'])} from the video.")
-
-        with result_col:
-            st.markdown(
-                f"### <span style='color:{blind_row['observed_hex']}'>●</span> "
-                f"Observed: {blind_row['observed_color']}",
-                unsafe_allow_html=True,
-            )
-            st.metric("Similar-color group", str(blind_row["color_group"]))
-            st.metric(
-                "Nearest known recipe (estimate)",
-                f"Recipe {int(blind_row['candidate_recipe'])}",
-                help=(
-                    f"Runner-up: Recipe {int(blind_row['second_candidate_recipe'])}. "
-                    f"Nearest-reference ΔE: {float(blind_row['candidate_delta_e']):.2f}; "
-                    f"margin over runner-up: {float(blind_row['candidate_margin']):.2f}."
-                ),
-            )
-            st.metric("Candidate confidence", str(blind_row["candidate_confidence"]).title())
-            st.metric("Analyzed frame", int(blind_row["frame"]))
-            st.caption("Snapshot timing: final stable frame before departure")
-
-        display_df = blind_df[
-            [
-                "vial",
-                "frame",
-                "mp4_s",
-                "observed_color",
-                "color_group",
-                "candidate_recipe",
-                "candidate_confidence",
-                "candidate_delta_e",
-            ]
-        ].rename(
-            columns={
-                "vial": "Vial",
-                "frame": "Departure frame",
-                "mp4_s": "Seconds",
-                "observed_color": "Observed color",
-                "color_group": "Color group",
-                "candidate_recipe": "Recipe candidate",
-                "candidate_confidence": "Confidence",
-                "candidate_delta_e": "Candidate ΔE",
-            }
-        )
-        st.dataframe(display_df, width="stretch", hide_index=True)
-    elif archive_video_mp4.name != "vial_fill.mp4":
-        st.caption("Blind vial analysis is calculated from the Vial Fill camera view.")
-    else:
-        st.caption("No blind-analysis result is available for this recording.")
+    st.caption("Archived CSI camera playback.")
     st.stop()
 
 if source_mode == "Recorded run":

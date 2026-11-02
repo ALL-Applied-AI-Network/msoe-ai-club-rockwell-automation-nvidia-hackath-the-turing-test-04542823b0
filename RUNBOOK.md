@@ -662,31 +662,39 @@ streamlit run app/dashboard.py
 
 This opens a browser tab at `http://localhost:8501`.
 
-### Blind analysis of the shorter CSI recordings
+### Predict carryover through an actual CSI run
 
-The dashboard can play and analyze the unlabeled CSI videos copied under
-`outputs/runs/<run name>/`. Runs 1–4 have already been processed with:
+First build the directed Vial 1 → Vial 2 → Vial 3 sequence from a CSV containing the
+intended recipe for every vial:
 
 ```powershell
-python scripts/blind_analyze.py --video outputs/runs/csi_run_2/vial_fill.mp4 --name csi_run_2
+python scripts/analyze_run_carryover.py --sequence outputs/runs/csi_run_5/vials.csv --name csi_run_5
+python scripts/analyze_run_carryover.py --sequence annotations/csi_20261030_recipe_sequence.csv --name csi_1030
 ```
 
-The script uses starwheel motion and liquid change only to locate filled vials. It then
-analyzes exactly **one frame per vial**: the final stable frame immediately before the
-starwheel sends that vial onward. From that departure snapshot it measures observed color,
-groups similar colors, and reports the nearest known Video 5 recipe color as an **estimate**
-with higher/medium/low confidence. It does not analyze frames between fills and never calls
-the estimate a verified production recipe or a PASS/FAIL verdict.
+Then set the dashboard **Source** to **CSI run carryover** and select the run. For every
+adjacent vial handoff, the dashboard reports:
 
-To view the results in the left sidebar:
+- **GREEN** (`predicted ΔE < 2`): significant contamination is not predicted; proceed.
+- **AMBER** (`predicted ΔE 2–5`): borderline; inspect the first vial.
+- **RED** (`predicted ΔE > 5`): significant contamination is predicted; flush or reorder
+  with the plant manager's approval.
 
-1. Set **Source** to **CSI video archive**.
-2. Choose `csi_run_1` through `csi_run_5` under **CSI recording**.
-3. Choose **Vial Fill**, **Tank Level**, or **Cap Seal** under **Camera view**.
+It also shows the source and target vial numbers, their intended recipes, predicted color
+shift, clean-recipe color gap, measurement patch, recommended action, and the complete run
+sequence. The result is a fitted impact/risk band, not a calibrated probability or proof
+that contamination occurred.
 
-The Vial Fill view for runs 1–4 shows the departure-frame image, observed color, color group,
-recipe candidate, confidence, and the complete blind-results table. Tank Level and Cap Seal
-remain synchronized playback views.
+The unlabeled CSI dataset videos 1–4 are not scored because their intended per-vial recipe
+sequences were never supplied. Adjacent observed colors cannot safely replace the missing
+recipes: contamination can make the next vial resemble the previous vial, which would make
+the observed color gap misleadingly small.
+
+### Play the CSI recordings
+
+The dashboard also plays the MP4 files under `outputs/runs/<run name>/`. Set **Source** to
+**CSI video archive**, choose a run, and choose **Vial Fill**, **Tank Level**, or **Cap Seal**.
+This mode is camera playback only.
 
 ---
 
